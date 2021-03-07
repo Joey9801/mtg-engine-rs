@@ -9,16 +9,16 @@ pub enum StartingStep {
     /// This step exists such that there is a transition into the first real state that observers
     /// can react to.
     Init,
-    
+
     /// It is during this step that the turn order is initially set
     ///
     /// During this step the "active player" is meaningless
     ChoosingTurnOrder,
-    
+
     /// This step includes all mulligan choices
     ///
     /// The active player during this step is the player making mulligan choices
-    InitialHandDraw
+    InitialHandDraw,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

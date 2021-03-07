@@ -1,4 +1,9 @@
-use crate::{Controller, ObjectReference, ObserverId, PlayerId, game::Game, steps::{Step, SubStep}, zone::ZoneLocation};
+use crate::{
+    game::Game,
+    steps::{Step, SubStep},
+    zone::ZoneLocation,
+    Controller, ObjectReference, ObserverId, PlayerId,
+};
 
 #[derive(Clone, Debug)]
 pub struct CompositeAction {
@@ -66,7 +71,7 @@ impl BaseAction {
                     component.apply(game_state);
                 }
             }
-            _ => todo!()
+            _ => todo!(),
         }
     }
 }
@@ -81,7 +86,7 @@ pub struct Action {
     /// Necessary as part of ordering simultaneous actions.
     /// Will be None if the action originated from the game itself
     pub controller: Controller,
-    
+
     /// The observer that added this action to the queue
     pub source: ObserverId,
 

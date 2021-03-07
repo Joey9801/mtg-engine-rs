@@ -1,15 +1,15 @@
+pub mod actions;
+pub mod base_rules;
+pub mod game;
 pub mod ids;
 pub mod steps;
 pub mod zone;
-pub mod base_rules;
-pub mod game;
-pub mod actions;
 
 use actions::{Action, BaseAction};
 use game::Game;
-use zone::{ZoneLocation};
+use zone::ZoneLocation;
 
-use ids::{PlayerId, ObjectId, ObserverId, ZoneId};
+use ids::{ObjectId, ObserverId, PlayerId, ZoneId};
 
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -40,35 +40,46 @@ pub enum ObjectReference {
     Abstract(ZoneLocation),
 }
 
-
 pub trait BaseObserver: std::fmt::Debug {
     /// Who owns this effect.
-    fn controller(&self) -> Controller { Controller::Game }
-    
+    fn controller(&self) -> Controller {
+        Controller::Game
+    }
+
     /// Called once when the game allocates this observer its globally unique ID
     ///
     /// Any actions emitted by a given observer will have that observers ID attached to them by the
     /// game. This property can be used to safely implement internal state machines without
     /// accidentally reacting to actions emitted by different observers.
     fn set_id(&mut self, _id: ObserverId) {}
-    
+
     /// If this observer is no longer relevant, returning false from this method will cause it to
     /// be cleaned up.
-    fn alive(&self, _game: &Game) -> bool { true }
-    
+    fn alive(&self, _game: &Game) -> bool {
+        true
+    }
+
     /// An opportunity for this observer to mutate an action before it gets queued for application.
     ///
     /// Replacement actions proposed in this manner are not gauranteed to be applied. In particular
     /// if there are multiple competing replacement actions, either one or zero of those
     /// replacements may be picked based on a combination of game rules and player choice.
-    fn propose_replacement(&mut self, action: &Action, game: &Game) -> Option<BaseAction> { None }
-    
+    fn propose_replacement(&mut self, action: &Action, game: &Game) -> Option<BaseAction> {
+        None
+    }
+
     /// The given action has just been applied to the game state, this is this effect's chance to
     /// react to it.
     ///
     /// If this effect would like to perform another action in reaction to the observed one, it
     /// should add it to the game's staging action set.
-    fn observe_action(&mut self, action: &Action, game: &Game, emit_action: &mut dyn FnMut(BaseAction)) { }
+    fn observe_action(
+        &mut self,
+        action: &Action,
+        game: &Game,
+        emit_action: &mut dyn FnMut(BaseAction),
+    ) {
+    }
 }
 
 pub trait Observer: BaseObserver {

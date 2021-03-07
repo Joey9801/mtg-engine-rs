@@ -3,17 +3,16 @@
 //! See section 704 of the comprehensive rules
 
 use crate::{
-    BaseObserver,
-    Controller,
-    game::Game,
     actions::{Action, BaseAction, CompositeAction},
+    game::Game,
     ids::{ObserverId, PlayerId},
+    BaseObserver, Controller,
 };
 
 #[derive(Debug, Clone)]
 pub struct StateBasedActions {
     id: Option<ObserverId>,
-    
+
     /// The player who was about to recieve priority before this the current
     /// round of state-based actions started.
     pending_priority: Option<PlayerId>,
@@ -23,7 +22,7 @@ impl StateBasedActions {
     pub fn new() -> Self {
         Self {
             id: None,
-            pending_priority: None
+            pending_priority: None,
         }
     }
 
@@ -34,10 +33,13 @@ impl StateBasedActions {
     }
 }
 
-
 impl BaseObserver for StateBasedActions {
-    fn controller(&self) -> Controller { Controller::Game }
-    fn set_id(&mut self, id: ObserverId) { self.id = Some(id); }
+    fn controller(&self) -> Controller {
+        Controller::Game
+    }
+    fn set_id(&mut self, id: ObserverId) {
+        self.id = Some(id);
+    }
 
     fn propose_replacement(&mut self, action: &Action, game: &Game) -> Option<BaseAction> {
         if let BaseAction::SetPriority(player) = action.base_action {
@@ -45,16 +47,21 @@ impl BaseObserver for StateBasedActions {
             if sba.is_some() {
                 self.pending_priority = Some(player);
             }
-            
+
             sba.map(|composite| BaseAction::CompositeAction(composite))
         } else {
             None
         }
     }
 
-    fn observe_action(&mut self, action: &Action, _game: &Game, emit_action: &mut dyn FnMut(BaseAction)) {
+    fn observe_action(
+        &mut self,
+        action: &Action,
+        _game: &Game,
+        emit_action: &mut dyn FnMut(BaseAction),
+    ) {
         // If there are no actions being executed
-        if let BaseAction::NoActions = action.base_action  {
+        if let BaseAction::NoActions = action.base_action {
             // And we're currently holding up priority for state-based actions
             if let Some(player) = self.pending_priority {
                 // Attempt to give that player priority again

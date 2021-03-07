@@ -37,8 +37,7 @@ macro_rules! make_id_type {
                 write!(f, "{}", self)
             }
         }
-        
-    }
+    };
 }
 
 make_id_type!(PlayerId);

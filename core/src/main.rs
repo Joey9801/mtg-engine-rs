@@ -1,10 +1,20 @@
-use mtg_engine_core::{BaseObserver, Controller, actions::{Action, BaseAction}, base_rules, game::{GameBuilder, Game}};
+use mtg_engine_core::{
+    actions::{Action, BaseAction},
+    base_rules,
+    game::{Game, GameBuilder},
+    BaseObserver, Controller,
+};
 
 #[derive(Clone, Debug)]
 struct StdoutDebugObserver {}
 
 impl BaseObserver for StdoutDebugObserver {
-    fn observe_action(&mut self, action: &Action, game: &Game, emit_action: &mut dyn FnMut(BaseAction)) {
+    fn observe_action(
+        &mut self,
+        action: &Action,
+        _game: &Game,
+        _emit_action: &mut dyn FnMut(BaseAction),
+    ) {
         dbg!(action);
     }
 }
