@@ -128,10 +128,10 @@ impl NamedZone {
             Hand(p) => format!("{}'s hand", p),
             Graveyard(p) => format!("{}'s graveyard", p),
             Battlefield => String::from("battlefield"),
-            Stack => String::from("battlefield"),
-            Exile => String::from("battlefield"),
-            Command => String::from("battlefield"),
-            Ante => String::from("battlefield"),
+            Stack => String::from("stack"),
+            Exile => String::from("exile"),
+            Command => String::from("command"),
+            Ante => String::from("ante"),
         };
 
         let owner = match self {

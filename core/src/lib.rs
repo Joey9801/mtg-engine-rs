@@ -56,12 +56,19 @@ pub trait BaseObserver: std::fmt::Debug {
     /// be cleaned up.
     fn alive(&self, _game: &Game) -> bool { true }
     
+    /// An opportunity for this observer to mutate an action before it gets queued to applicatiopn
+    ///
+    /// Replacement actions proposed in this manner are not gauranteed to be applied. In particular
+    /// if there are multiple competing replacement actions, either one or zero of those
+    /// replacements may be picked based on a combination of game rules and player choice.
+    fn propose_replacement(&self, action: &Action, game: &Game) -> Option<BaseAction> { None }
+    
     /// The given action has just been applied to the game state, this is this effect's chance to
     /// react to it.
     ///
     /// If this effect would like to perform another action in reaction to the observed one, it
     /// should add it to the game's staging action set.
-    fn observe_action(&mut self, action: &Action, game: &Game, emit_action: &mut dyn FnMut(BaseAction));
+    fn observe_action(&mut self, action: &Action, game: &Game, emit_action: &mut dyn FnMut(BaseAction)) { }
 }
 
 pub trait Observer: BaseObserver {

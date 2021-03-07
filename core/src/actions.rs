@@ -8,6 +8,9 @@ pub struct CompositeAction {
 
 #[derive(Clone, Debug)]
 pub enum BaseAction {
+    /// Emitted each time the game is ticked with no acitons in any queue
+    NoActions,
+
     /// Advances the current substep from InProgress -> Ending
     EndStep,
 

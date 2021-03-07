@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use crate::{
+    actions::BaseAction,
     ids::{IdGenerator, ObjectId, ObserverId, PlayerId, ZoneId},
     steps::{GameStep, StartingStep, Step, SubStep},
     zone::{NamedZone, Zone},
-    Action, Observer, Player,
+    Action, Controller, Observer, Player,
 };
 
 #[derive(Clone, Debug)]
@@ -36,6 +37,7 @@ pub struct Game {
     pub pending_actions: Vec<Action>,
 
     pub observer_id_gen: IdGenerator<ObserverId>,
+    pub self_id: ObserverId,
     pub observers: HashMap<ObserverId, Box<dyn Observer>>,
 }
 
@@ -120,27 +122,33 @@ impl Game {
         // TODO: Establish the correct ordering for actions (may require player input)
 
         while let Some(action) = self.staging_actions.pop() {
-            self.pending_actions.push(action);
+            let candidate_replacements = self
+                .observers
+                .iter()
+                .filter_map(|(oid, o)| {
+                    o.propose_replacement(&action, self)
+                        .map(|a| (a, *oid, o.controller()))
+                })
+                .collect::<Vec<_>>();
+
+            let resolved_action = match &candidate_replacements[..] {
+                [] => action,
+                [(new_base, source, controller)] => Action {
+                    base_action: new_base.clone(),
+                    controller: *controller,
+                    source: *source,
+                    original: Some(Box::new(action)),
+                },
+                _ => todo!("Handle multiple competing replacement effects"),
+            };
+
+            self.pending_actions.push(resolved_action);
         }
     }
 
-    /// Attempt to perform a single action
-    fn tick(&mut self) -> TickResult {
-        if self.pending_actions.is_empty() {
-            if !self.staging_actions.is_empty() {
-                self.promote_staged_actions();
-            } else {
-                return TickResult::NeedPlayerInput(self.step.active_player);
-            }
-        }
-
-        let action = self
-            .pending_actions
-            .pop()
-            .expect("Unexpectedly empty pending action set");
-
-        action.base_action.apply(self);
-
+    /// Broadcast the given action to all observers and add any actions emitted in reaction to the
+    /// staging set
+    fn broadcast_action(&mut self, action: &Action) {
         // Perform this slightly strange dance to avoid problems associated with the immutable
         // reference to the game state containing the a reference to the mutable receiver of
         // `o.observe_action`.
@@ -152,8 +160,8 @@ impl Game {
         let mut new_actions = Vec::new();
         for (oid, o) in observers.iter_mut() {
             let controller = o.controller();
-            o.observe_action(&action, self, &mut |action| {
-                new_actions.push((action, controller, *oid))
+            o.observe_action(action, self, &mut |reacting_action| {
+                new_actions.push((reacting_action, controller, *oid))
             });
         }
         self.observers = observers;
@@ -165,6 +173,32 @@ impl Game {
                 original: None,
             });
         }
+    }
+
+    /// Attempt to perform a single action
+    fn tick(&mut self) -> TickResult {
+        if self.pending_actions.is_empty() {
+            if !self.staging_actions.is_empty() {
+                self.promote_staged_actions();
+            } else {
+                self.broadcast_action(&Action {
+                    base_action: BaseAction::NoActions,
+                    controller: Controller::Game,
+                    source: self.self_id,
+                    original: None,
+                });
+                return TickResult::NeedPlayerInput(self.step.active_player);
+            }
+        }
+
+        let action = self
+            .pending_actions
+            .pop()
+            .expect("Unexpectedly empty pending action set");
+
+        action.base_action.apply(self);
+
+        self.broadcast_action(&action);
 
         TickResult::Ticked(action)
     }
@@ -320,6 +354,9 @@ impl GameBuilder {
             Vec::new()
         };
 
+        let mut observer_id_gen = IdGenerator::<ObserverId>::new();
+        let self_id = observer_id_gen.next_id();
+
         Game {
             players: self.players,
             turn_order,
@@ -329,7 +366,8 @@ impl GameBuilder {
             shared_zones: self.shared_zones,
             staging_actions: self.staging_actions,
             pending_actions: self.pending_actions,
-            observer_id_gen: IdGenerator::new(),
+            observer_id_gen,
+            self_id,
             observers: HashMap::new(),
         }
     }
