@@ -1,3 +1,5 @@
+use crate::PlayerId;
+
 /// StartingSteps aren't technically steps in the game, but are defined here so that the start of a
 /// game can leverage the same state transition machinery as the main body of the game.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,4 +51,17 @@ pub enum Step {
     Combat(CombatStep),
     PostCombatMain,
     End(EndStep),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SubStep {
+    InProgress,
+    Ending,
+}
+
+#[derive(Clone, Debug)]
+pub struct GameStep {
+    pub active_player: PlayerId,
+    pub step: Step,
+    pub substep: SubStep,
 }
