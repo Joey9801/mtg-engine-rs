@@ -46,6 +46,66 @@ pub enum TickResult {
 }
 
 impl Game {
+    pub fn stack(&self) -> &Zone {
+        self.zones
+            .get(&self.shared_zones.stack)
+            .expect("Can't find the stack")
+    }
+
+    pub fn stack_mut(&mut self) -> &mut Zone {
+        self.zones
+            .get_mut(&self.shared_zones.stack)
+            .expect("Can't find the stack")
+    }
+
+    pub fn battlefield(&self) -> &Zone {
+        self.zones
+            .get(&self.shared_zones.battlefield)
+            .expect("Can't find the battlefield")
+    }
+
+    pub fn battlefield_mut(&mut self) -> &mut Zone {
+        self.zones
+            .get_mut(&self.shared_zones.battlefield)
+            .expect("Can't find the battlefield")
+    }
+
+    pub fn exile(&self) -> &Zone {
+        self.zones
+            .get(&self.shared_zones.exile)
+            .expect("Can't find the exile zone")
+    }
+
+    pub fn exile_mut(&mut self) -> &mut Zone {
+        self.zones
+            .get_mut(&self.shared_zones.exile)
+            .expect("Can't find the exile zone")
+    }
+
+    pub fn command(&self) -> &Zone {
+        self.zones
+            .get(&self.shared_zones.command)
+            .expect("Can't find the command zone")
+    }
+
+    pub fn command_mut(&mut self) -> &mut Zone {
+        self.zones
+            .get_mut(&self.shared_zones.command)
+            .expect("Can't find the command zone")
+    }
+
+    pub fn ante(&self) -> &Zone {
+        self.zones
+            .get(&self.shared_zones.ante)
+            .expect("Can't find the ante zone")
+    }
+
+    pub fn ante_mut(&mut self) -> &mut Zone {
+        self.zones
+            .get_mut(&self.shared_zones.ante)
+            .expect("Can't find the ante zone")
+    }
+
     fn requires_player_input(&self) -> bool {
         // TODO: Determine whether the staging actions need player input to order correctly
         // TODO: Return a more descriptive value that defines which player input is required from, and what sort of input is required
