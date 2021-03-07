@@ -122,14 +122,16 @@ impl Game {
         // TODO: Establish the correct ordering for actions (may require player input)
 
         while let Some(action) = self.staging_actions.pop() {
-            let candidate_replacements = self
-                .observers
-                .iter()
-                .filter_map(|(oid, o)| {
-                    o.propose_replacement(&action, self)
-                        .map(|a| (a, *oid, o.controller()))
+            let mut observers = std::mem::take(&mut self.observers);
+            let candidate_replacements = observers
+                .iter_mut()
+                .filter_map(|(oid, observer)| {
+                    observer
+                        .propose_replacement(&action, self)
+                        .map(|a| (a, *oid, observer.controller()))
                 })
                 .collect::<Vec<_>>();
+            self.observers = observers;
 
             let resolved_action = match &candidate_replacements[..] {
                 [] => action,
