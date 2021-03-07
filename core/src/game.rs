@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
+    ids::{IdGenerator, ObjectId, ObserverId, PlayerId, ZoneId},
     steps::{GameStep, StartingStep, Step, SubStep},
-    zone::{NamedZone, Zone, ZoneId},
-    Action, IdGenerator, Observer, ObserverId, Player, PlayerId,
+    zone::{NamedZone, Zone},
+    Action, Observer, Player,
 };
 
 #[derive(Clone, Debug)]

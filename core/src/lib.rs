@@ -1,3 +1,4 @@
+pub mod ids;
 pub mod steps;
 pub mod zone;
 pub mod base_rules;
@@ -6,59 +7,9 @@ pub mod actions;
 
 use actions::{Action, BaseAction};
 use game::Game;
-use zone::{ZoneId, ZoneLocation};
+use zone::{ZoneLocation};
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub struct PlayerId(usize);
-
-impl std::fmt::Debug for PlayerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl std::fmt::Display for PlayerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Player:{}", self.0)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct ObjectId(usize);
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct ObserverId(usize);
-
-#[derive(Clone, Debug)]
-pub struct IdGenerator<T> {
-    counter: usize,
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T> IdGenerator<T> {
-    pub fn new() -> Self {
-        Self {
-            counter: 0,
-            _phantom: std::marker::PhantomData::<T>,
-        }
-    }
-}
-
-impl IdGenerator<PlayerId> {
-    pub fn next_id(&mut self) -> PlayerId {
-        let ret = PlayerId(self.counter);
-        self.counter += 1;
-        ret
-    }
-}
-
-impl IdGenerator<ObserverId> {
-    pub fn next_id(&mut self) -> ObserverId {
-        let ret = ObserverId(self.counter);
-        self.counter += 1;
-        ret
-    }
-}
+use ids::{PlayerId, ObjectId, ObserverId, ZoneId};
 
 #[derive(Clone, Debug)]
 pub struct Player {

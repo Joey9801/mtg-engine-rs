@@ -1,29 +1,9 @@
 use std::{cmp::min, collections::HashMap};
 
-use crate::{IdGenerator, Object, ObjectId, PlayerId};
-
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub struct ZoneId(usize);
-
-impl std::fmt::Debug for ZoneId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl std::fmt::Display for ZoneId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Zone{}", self.0)
-    }
-}
-
-impl IdGenerator<ZoneId> {
-    pub fn next_id(&mut self) -> ZoneId {
-        let ret = ZoneId(self.counter);
-        self.counter += 1;
-        ret
-    }
-}
+use crate::{
+    ids::{ObjectId, PlayerId, ZoneId},
+    Object,
+};
 
 #[derive(Clone, Debug)]
 pub enum AbstractZoneLocation {
@@ -153,24 +133,31 @@ impl NamedZone {
             Command => String::from("battlefield"),
             Ante => String::from("battlefield"),
         };
-        
+
         let owner = match self {
             Library(p) | Hand(p) | Graveyard(p) => Some(p),
             _ => None,
         };
-        
+
         let public = match self {
             Library(_) | Hand(_) => false,
             _ => true,
         };
 
         let storage = HashMap::new();
-        
+
         let ordering = match self {
             Library(_) | Graveyard(_) | Stack => Some(Vec::new()),
-            _ => None
+            _ => None,
         };
-        
-        Zone { id, name, owner, public, storage, ordering, }
+
+        Zone {
+            id,
+            name,
+            owner,
+            public,
+            storage,
+            ordering,
+        }
     }
 }
