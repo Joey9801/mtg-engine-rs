@@ -4,8 +4,8 @@ pub mod base_rules;
 pub mod game;
 pub mod actions;
 
-use actions::Action;
-use game::GameState;
+use actions::{Action, BaseAction};
+use game::Game;
 use zone::{ZoneId, ZoneLocation};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -77,7 +77,7 @@ pub struct Object {
     // TODO
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Controller {
     Game,
     Player(PlayerId),
@@ -103,14 +103,14 @@ pub trait BaseObserver: std::fmt::Debug {
     
     /// If this observer is no longer relevant, returning false from this method will cause it to
     /// be cleaned up.
-    fn alive(&self, _game: &GameState) -> bool { true }
+    fn alive(&self, _game: &Game) -> bool { true }
     
     /// The given action has just been applied to the game state, this is this effect's chance to
     /// react to it.
     ///
     /// If this effect would like to perform another action in reaction to the observed one, it
     /// should add it to the game's staging action set.
-    fn observe_action(&mut self, action: &Action, game: &mut GameState);
+    fn observe_action(&mut self, action: &Action, game: &Game, emit_action: &mut dyn FnMut(BaseAction));
 }
 
 pub trait Observer: BaseObserver {

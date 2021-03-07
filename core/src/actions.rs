@@ -1,4 +1,4 @@
-use crate::{Controller, ObjectReference, PlayerId, game::GameState, steps::{Step, SubStep}, zone::ZoneLocation};
+use crate::{Controller, ObjectReference, ObserverId, PlayerId, game::Game, steps::{Step, SubStep}, zone::ZoneLocation};
 
 #[derive(Clone, Debug)]
 pub struct CompositeAction {
@@ -42,7 +42,7 @@ pub enum BaseAction {
 }
 
 impl BaseAction {
-    pub fn apply(&self, game_state: &mut GameState) {
+    pub fn apply(&self, game_state: &mut Game) {
         match self {
             BaseAction::EndStep => {
                 debug_assert!(game_state.step.substep == SubStep::InProgress);
@@ -78,6 +78,9 @@ pub struct Action {
     /// Necessary as part of ordering simultaneous actions.
     /// Will be None if the action originated from the game itself
     pub controller: Controller,
+    
+    /// The observer that added this action to the queue
+    pub source: ObserverId,
 
     /// If this action was the result of a replacement effect, the original action that it replaced
     pub original: Option<Box<Action>>,

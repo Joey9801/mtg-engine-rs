@@ -16,7 +16,7 @@ pub struct SharedZones {
 }
 
 #[derive(Clone, Debug)]
-pub struct GameState {
+pub struct Game {
     /// Set of players in turn order
     pub players: HashMap<PlayerId, Player>,
 
@@ -33,13 +33,9 @@ pub struct GameState {
 
     /// Actions which are ready to execute
     pub pending_actions: Vec<Action>,
-}
 
-#[derive(Clone, Debug)]
-pub struct Game {
-    pub state: GameState,
     pub observer_id_gen: IdGenerator<ObserverId>,
-    pub observers: Vec<Box<dyn Observer>>,
+    pub observers: HashMap<ObserverId, Box<dyn Observer>>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,7 +44,7 @@ pub enum TickResult {
     NeedPlayerInput(PlayerId),
 }
 
-impl GameState {
+impl Game {
     fn requires_player_input(&self) -> bool {
         // TODO: Determine whether the staging actions need player input to order correctly
         // TODO: Return a more descriptive value that defines which player input is required from, and what sort of input is required
@@ -84,34 +80,42 @@ impl GameState {
 
         action.base_action.apply(self);
 
-        TickResult::Ticked(action)
-    }
-}
-
-impl Game {
-    /// Attempt to perform a single action
-    pub fn tick(&mut self) -> TickResult {
-        let result = self.state.tick();
-        match &result {
-            TickResult::Ticked(action) => {
-                for observer in self.observers.iter_mut() {
-                    observer.observe_action(&action, &mut self.state);
-                }
-            }
-            TickResult::NeedPlayerInput(_) => assert!(self.state.requires_player_input()),
+        // Perform this slightly strange dance to avoid problems associated with the immutable
+        // reference to the game state containing the a reference to the mutable receiver of
+        // `o.observe_action`.
+        // Since the observers are hidden behind trait objects, no observer should be able to
+        // inspect the internal state of another anyway, so presenting them a game state with no
+        // observers should have no effect on any functionality.
+        // New actions are placed into a temporary vector for the same reason.
+        let mut observers = std::mem::take(&mut self.observers);
+        let mut new_actions = Vec::new();
+        for (oid, o) in observers.iter_mut() {
+            let controller = o.controller();
+            o.observe_action(&action, self, &mut |action| {
+                new_actions.push((action, controller, *oid))
+            });
         }
-        result
+        self.observers = observers;
+        for (base_action, controller, source) in new_actions {
+            self.staging_actions.push(Action {
+                base_action,
+                controller,
+                source,
+                original: None,
+            });
+        }
+
+        TickResult::Ticked(action)
     }
 
     pub fn tick_until_player_input(&mut self) {
-        while !self.state.requires_player_input() {
+        while !self.requires_player_input() {
             self.tick();
         }
     }
 
     pub fn find_player<S: AsRef<str>>(&self, name: S) -> Option<PlayerId> {
-        self.state
-            .players
+        self.players
             .values()
             .filter(|p| p.name == name.as_ref())
             .map(|p| p.id)
@@ -121,7 +125,7 @@ impl Game {
     pub fn attach_observer(&mut self, mut o: Box<dyn Observer>) {
         let id = self.observer_id_gen.next_id();
         o.set_id(id);
-        self.observers.push(o);
+        self.observers.insert(id, o);
     }
 }
 
@@ -256,18 +260,16 @@ impl GameBuilder {
         };
 
         Game {
-            state: GameState {
-                players: self.players,
-                turn_order,
-                step,
-                priority: self.priority,
-                zones: self.zones,
-                shared_zones: self.shared_zones,
-                staging_actions: self.staging_actions,
-                pending_actions: self.pending_actions,
-            },
+            players: self.players,
+            turn_order,
+            step,
+            priority: self.priority,
+            zones: self.zones,
+            shared_zones: self.shared_zones,
+            staging_actions: self.staging_actions,
+            pending_actions: self.pending_actions,
             observer_id_gen: IdGenerator::new(),
-            observers: Vec::new(),
+            observers: HashMap::new(),
         }
     }
 }
