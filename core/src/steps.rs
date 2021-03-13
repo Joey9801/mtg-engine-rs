@@ -53,13 +53,13 @@ pub enum Step {
     End(EndStep),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SubStep {
     InProgress,
     Ending,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct GameStep {
     pub active_player: PlayerId,
     pub step: Step,

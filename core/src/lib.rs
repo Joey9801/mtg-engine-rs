@@ -5,8 +5,8 @@ pub mod ids;
 pub mod steps;
 pub mod zone;
 
-use actions::{Action, BaseAction};
-use game::Game;
+use actions::{Action, ActionPayload, MtgAction};
+use game::GameState;
 use zone::ZoneLocation;
 
 use ids::{ObjectId, ObserverId, PlayerId, ZoneId};
@@ -25,7 +25,15 @@ pub struct Player {
 #[derive(Clone, Debug)]
 pub struct Object {
     pub id: ObjectId,
-    // TODO
+    pub owner: PlayerId,
+    pub controller: PlayerId,
+
+    /// The action to be executed if/when this object is resolved from the top of the stack.
+    ///
+    /// Only relevant for objects on the stack.
+    /// This action will be added to the staging set and subject to replacement effects just like
+    /// any other.
+    pub resolve_action: Option<MtgAction>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -34,10 +42,36 @@ pub enum Controller {
     Player(PlayerId),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct ConcreteObject {
+    pub zone: ZoneId,
+    pub object: ObjectId,
+}
+
 #[derive(Clone, Debug)]
 pub enum ObjectReference {
-    Concrete(ObjectId),
+    Concrete(ConcreteObject),
     Abstract(ZoneLocation),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum MtgValue {
+    Number(i32),
+    Flag(bool),
+    Object(ObjectId),
+    Player(PlayerId),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PlayerInputPayload {
+    Data(MtgValue),
+    FinishedInput,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PlayerInput {
+    pub source: PlayerId,
+    pub payload: PlayerInputPayload,
 }
 
 pub trait BaseObserver: std::fmt::Debug {
@@ -55,7 +89,7 @@ pub trait BaseObserver: std::fmt::Debug {
 
     /// If this observer is no longer relevant, returning false from this method will cause it to
     /// be cleaned up.
-    fn alive(&self, _game: &Game) -> bool {
+    fn alive(&self, _game: &GameState) -> bool {
         true
     }
 
@@ -64,7 +98,9 @@ pub trait BaseObserver: std::fmt::Debug {
     /// Replacement actions proposed in this manner are not gauranteed to be applied. In particular
     /// if there are multiple competing replacement actions, either one or zero of those
     /// replacements may be picked based on a combination of game rules and player choice.
-    fn propose_replacement(&mut self, action: &Action, game: &Game) -> Option<BaseAction> {
+    ///
+    /// Only domain actions may be modified
+    fn propose_replacement(&self, _action: &Action, _game: &GameState) -> Option<MtgAction> {
         None
     }
 
@@ -75,10 +111,25 @@ pub trait BaseObserver: std::fmt::Debug {
     /// should add it to the game's staging action set.
     fn observe_action(
         &mut self,
-        action: &Action,
-        game: &Game,
-        emit_action: &mut dyn FnMut(BaseAction),
+        _action: &Action,
+        _game_state: &GameState,
+        _emit_action: &mut dyn FnMut(ActionPayload),
     ) {
+    }
+
+    /// If this observer has emitted a RequestInput action, this method will be called with each
+    /// input the player makes
+    ///
+    /// Actions emitted from this method will be applied to the game immediately, bypassing the
+    /// regular action queue. The game will continue requesting input from the player until the
+    /// EndInput action is emitted.
+    fn consume_input(
+        &mut self,
+        _input: &PlayerInput,
+        _game_state: &GameState,
+        _emit_action: &mut dyn FnMut(ActionPayload),
+    ) {
+        panic!("Input being passed to an observer that has no consume_input implementation")
     }
 }
 

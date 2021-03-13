@@ -44,3 +44,4 @@ make_id_type!(PlayerId);
 make_id_type!(ObjectId);
 make_id_type!(ObserverId);
 make_id_type!(ZoneId);
+make_id_type!(ActionId);

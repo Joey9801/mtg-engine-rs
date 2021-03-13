@@ -5,7 +5,7 @@ use crate::{
     Object,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum AbstractZoneLocation {
     Top,
     Bottom,
@@ -27,10 +27,10 @@ impl AbstractZoneLocation {
 }
 
 /// A way to describe a particular object by its zone location
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ZoneLocation {
-    zone: ZoneId,
-    loc: AbstractZoneLocation,
+    pub zone: ZoneId,
+    pub loc: AbstractZoneLocation,
 }
 
 #[derive(Clone, Debug)]
@@ -93,8 +93,9 @@ impl Zone {
         self.storage.insert(object.id, object);
     }
 
-    pub fn remove(&mut self, id: ObjectId) -> Object {
+    pub fn remove(&mut self, id: ObjectId) -> Option<Object> {
         assert!(self.storage.contains_key(&id));
+        let obj = self.storage.remove(&id)?;
 
         if let Some(ordering) = self.ordering.as_mut() {
             let index = ordering
@@ -104,7 +105,7 @@ impl Zone {
             ordering.remove(index);
         }
 
-        self.storage.remove(&id).unwrap()
+        Some(obj)
     }
 }
 

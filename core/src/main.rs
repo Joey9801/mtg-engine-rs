@@ -1,7 +1,7 @@
 use mtg_engine_core::{
-    actions::{Action, BaseAction},
+    actions::{Action, ActionPayload, MtgAction},
     base_rules,
-    game::{Game, GameBuilder},
+    game::{GameBuilder, GameState},
     BaseObserver, Controller,
 };
 
@@ -12,8 +12,8 @@ impl BaseObserver for StdoutDebugObserver {
     fn observe_action(
         &mut self,
         action: &Action,
-        _game: &Game,
-        _emit_action: &mut dyn FnMut(BaseAction),
+        _game: &GameState,
+        _emit_action: &mut dyn FnMut(ActionPayload),
     ) {
         dbg!(action);
     }
@@ -36,25 +36,31 @@ fn main() {
     let bob = game.find_player("bob").unwrap();
     let fake_oid = game.observer_id_gen.next_id();
 
-    game.staging_actions.push(Action {
-        base_action: BaseAction::SetPriority(alice),
+    game.action_queue.add(Action {
+        payload: ActionPayload::DomainAction(MtgAction::SetPriority(alice)),
         controller: Controller::Game,
         source: fake_oid,
+        id: game.action_id_gen.next_id(),
         original: None,
+        generated_at: game.game_timestamp,
     });
     game.tick_until_player_input();
-    game.staging_actions.push(Action {
-        base_action: BaseAction::PassPriority,
+    game.action_queue.add(Action {
+        payload: ActionPayload::DomainAction(MtgAction::PassPriority),
         controller: Controller::Player(alice),
         source: fake_oid,
+        id: game.action_id_gen.next_id(),
         original: None,
+        generated_at: game.game_timestamp,
     });
     game.tick_until_player_input();
-    game.staging_actions.push(Action {
-        base_action: BaseAction::SetPriority(bob),
+    game.action_queue.add(Action {
+        payload: ActionPayload::DomainAction(MtgAction::SetPriority(bob)),
         controller: Controller::Game,
         source: fake_oid,
+        id: game.action_id_gen.next_id(),
         original: None,
+        generated_at: game.game_timestamp,
     });
     game.tick_until_player_input();
 }
