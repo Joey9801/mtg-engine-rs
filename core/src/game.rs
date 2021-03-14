@@ -8,7 +8,7 @@ use crate::{
     ids::{ActionId, IdGenerator, ObserverId, PlayerId, ZoneId},
     steps::{GameStep, StartingStep, Step, SubStep},
     zone::{NamedZone, Zone},
-    Action, Controller, Observer, Player,
+    Action, Controller, Observer, Player, PlayerInput,
 };
 
 #[derive(Clone, Debug)]
@@ -210,6 +210,23 @@ pub struct InputSession {
     handler: ObserverId,
 }
 
+pub enum InputError {
+    /// The observer managing the current input session rejected the input with the given message
+    Rejected(String),
+
+    /// The input was given when no input was being requested
+    NoInputSession,
+
+    /// The input came from the wrong player
+    ///
+    /// In this error case the input is not passed to the observer managing the current input session
+    WrongPlayer,
+
+    /// Internal error for when an observer has requested an input session, but has not defined an
+    /// input handler.
+    UnimplementedObserver,
+}
+
 #[derive(Clone, Debug)]
 pub struct Game {
     /// Actual state of the game being run
@@ -230,6 +247,15 @@ pub struct Game {
     pub observer_id_gen: IdGenerator<ObserverId>,
     pub action_id_gen: IdGenerator<ActionId>,
     pub self_id: ObserverId,
+    
+    /// Storage for all obververs currently alive
+    ///
+    /// TODO: Not all observers have have implementations for each method in the trait.  This might
+    /// be made more efficient by storing which subsets of observers need, eg, `observer_action`
+    /// calling on them, and which observers doing so would be a waste of time.
+    /// Actually benchmark this in real-world cases though, the cost of maintaining the sets +
+    /// dictionary lookups for every key might be more than the cost of just calling the dummy
+    /// default implementations of the methods.
     pub observers: HashMap<ObserverId, Box<dyn Observer>>,
 
     pub current_input_session: Option<InputSession>,
@@ -398,6 +424,45 @@ impl Game {
                 }
             }
         }
+    }
+
+    pub fn player_input(&mut self, input: PlayerInput) -> Result<(), InputError> {
+        let curr_session = match &self.current_input_session {
+            None => Err(InputError::NoInputSession)?,
+            Some(session) => session,
+        };
+
+        if curr_session.request.from_player != input.source {
+            Err(InputError::WrongPlayer)?
+        }
+        let handler_id = curr_session.handler;
+
+        let handler = self
+            .observers
+            .get_mut(&curr_session.handler)
+            .expect("Input session handler does not exist");
+
+        let mut emitted_actions = Vec::new();
+        handler.consume_input(&input, &self.game_state, &mut |action| {
+            emitted_actions.push(action)
+        });
+        
+        // Immediately apply and broadcast each of the emitted actions
+        for action_payload in emitted_actions {
+            let action_id = self.action_id_gen.next_id();
+            let action = Action {
+                payload: action_payload,
+                controller: Controller::Player(input.source),
+                source: handler_id,
+                id: action_id,
+                generated_at: self.game_timestamp,
+                original: None,
+            };
+            self.apply_action(&action);
+            self.broadcast_action(&action);
+        }
+        
+        Ok(())
     }
 
     pub fn tick_until_player_input(&mut self) {

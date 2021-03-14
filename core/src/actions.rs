@@ -14,6 +14,9 @@ pub struct CompositeAction {
     pub components: Vec<MtgAction>,
 }
 
+// TODO: This enum will certainly become unweildy. Replace it with a trait, and use a trait object as
+// the DomainAction type.
+// Can still serialize trait objects with https://github.com/dtolnay/typetag
 #[derive(Clone, Debug)]
 pub enum MtgAction {
     /// Advances the current GameStep to the given step/subset/player
@@ -96,19 +99,21 @@ impl MtgAction {
 #[derive(Clone, Debug)]
 pub struct InputRequest {
     /// Input is being requested from this player
-    from: PlayerId,
+    pub from_player: PlayerId,
 
     /// Some token so that the player knows what input is being requested from them
     ///
     /// TODO: Could this be replaced with an enum/something more structured?
     /// A presentation layer on top of this engine would probably want to present specialized UI
     /// elements for each type of input
-    input_type: String,
+    pub input_type: String,
 }
 
 #[derive(Clone, Debug)]
 pub enum EngineAction {
-    /// Emitted each time the game is ticked with no actions in any queue
+    /// Dummy action emitted by the game each time it is ticked with no actions in any queue
+    ///
+    /// The execution of this action has no effect on any game state
     NoActions,
 
     /// Starts an input session, with all inputs being directed toward the observer that created

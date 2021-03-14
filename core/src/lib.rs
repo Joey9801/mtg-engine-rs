@@ -123,6 +123,9 @@ pub trait BaseObserver: std::fmt::Debug {
     /// Actions emitted from this method will be applied to the game immediately, bypassing the
     /// regular action queue. The game will continue requesting input from the player until the
     /// EndInput action is emitted.
+    ///
+    /// TODO: Add a mechanism for the observer to indicate that the given input was invalid
+    /// (perhaps just returning a Result<T, E> from this method)
     fn consume_input(
         &mut self,
         _input: &PlayerInput,
