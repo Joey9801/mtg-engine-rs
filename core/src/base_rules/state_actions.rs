@@ -3,7 +3,10 @@
 //! See section 704 of the comprehensive rules
 
 use crate::{
-    actions::{Action, ActionPayload, CompositeAction, MtgAction},
+    actions::{
+        mtg_action::{self, CompositeAction, MtgAction, MtgActionDowncast, SetPriority},
+        Action, ActionPayload,
+    },
     game::GameState,
     BaseObserver, Controller,
 };
@@ -24,10 +27,18 @@ impl BaseObserver for StateBasedActions {
         Controller::Game
     }
 
-    fn propose_replacement(&self, action: &Action, game_state: &GameState) -> Option<MtgAction> {
-        if let ActionPayload::DomainAction(MtgAction::SetPriority(_)) = action.payload {
-            self.generate_actions(game_state)
-                .map(|composite| MtgAction::CompositeAction(composite))
+    fn propose_replacement(
+        &self,
+        action: &Action,
+        game_state: &GameState,
+    ) -> Option<Box<dyn MtgAction>> {
+        if let ActionPayload::DomainAction(a) = &action.payload {
+            if a.is::<SetPriority>() {
+                self.generate_actions(game_state)
+                    .map(|composite| Box::new(composite) as Box<dyn MtgAction>)
+            } else {
+                None
+            }
         } else {
             None
         }

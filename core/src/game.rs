@@ -247,7 +247,7 @@ pub struct Game {
     pub observer_id_gen: IdGenerator<ObserverId>,
     pub action_id_gen: IdGenerator<ActionId>,
     pub self_id: ObserverId,
-    
+
     /// Storage for all obververs currently alive
     ///
     /// TODO: Not all observers have have implementations for each method in the trait.  This might
@@ -446,7 +446,7 @@ impl Game {
         handler.consume_input(&input, &self.game_state, &mut |action| {
             emitted_actions.push(action)
         });
-        
+
         // Immediately apply and broadcast each of the emitted actions
         for action_payload in emitted_actions {
             let action_id = self.action_id_gen.next_id();
@@ -461,7 +461,7 @@ impl Game {
             self.apply_action(&action);
             self.broadcast_action(&action);
         }
-        
+
         Ok(())
     }
 

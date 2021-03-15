@@ -5,7 +5,7 @@ pub mod ids;
 pub mod steps;
 pub mod zone;
 
-use actions::{Action, ActionPayload, MtgAction};
+use actions::{mtg_action::MtgAction, Action, ActionPayload};
 use game::GameState;
 use zone::ZoneLocation;
 
@@ -33,7 +33,7 @@ pub struct Object {
     /// Only relevant for objects on the stack.
     /// This action will be added to the staging set and subject to replacement effects just like
     /// any other.
-    pub resolve_action: Option<MtgAction>,
+    pub resolve_action: Option<Box<dyn MtgAction>>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -100,7 +100,11 @@ pub trait BaseObserver: std::fmt::Debug {
     /// replacements may be picked based on a combination of game rules and player choice.
     ///
     /// Only domain actions may be modified
-    fn propose_replacement(&self, _action: &Action, _game: &GameState) -> Option<MtgAction> {
+    fn propose_replacement(
+        &self,
+        _action: &Action,
+        _game: &GameState,
+    ) -> Option<Box<dyn MtgAction>> {
         None
     }
 

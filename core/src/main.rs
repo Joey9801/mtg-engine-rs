@@ -1,5 +1,8 @@
 use mtg_engine_core::{
-    actions::{Action, ActionPayload, MtgAction},
+    actions::{
+        mtg_action::{MtgAction, PassPriority, SetPriority},
+        Action, ActionPayload,
+    },
     base_rules,
     game::{GameBuilder, GameState},
     BaseObserver, Controller,
@@ -37,7 +40,9 @@ fn main() {
     let fake_oid = game.observer_id_gen.next_id();
 
     game.action_queue.add(Action {
-        payload: ActionPayload::DomainAction(MtgAction::SetPriority(alice)),
+        payload: ActionPayload::DomainAction(Box::new(SetPriority {
+            new_priority: alice,
+        })),
         controller: Controller::Game,
         source: fake_oid,
         id: game.action_id_gen.next_id(),
@@ -46,7 +51,7 @@ fn main() {
     });
     game.tick_until_player_input();
     game.action_queue.add(Action {
-        payload: ActionPayload::DomainAction(MtgAction::PassPriority),
+        payload: ActionPayload::DomainAction(Box::new(PassPriority)),
         controller: Controller::Player(alice),
         source: fake_oid,
         id: game.action_id_gen.next_id(),
@@ -55,7 +60,7 @@ fn main() {
     });
     game.tick_until_player_input();
     game.action_queue.add(Action {
-        payload: ActionPayload::DomainAction(MtgAction::SetPriority(bob)),
+        payload: ActionPayload::DomainAction(Box::new(SetPriority { new_priority: bob })),
         controller: Controller::Game,
         source: fake_oid,
         id: game.action_id_gen.next_id(),
