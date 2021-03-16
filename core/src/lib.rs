@@ -1,40 +1,10 @@
 pub mod actions;
-pub mod base_rules;
 pub mod game;
 pub mod ids;
-pub mod steps;
-pub mod zone;
 
-use actions::{mtg_action::MtgAction, Action, ActionPayload};
-use game::GameState;
-use zone::ZoneLocation;
-
-use ids::{ObjectId, ObserverId, PlayerId, ZoneId};
-
-#[derive(Clone, Debug)]
-pub struct Player {
-    pub id: PlayerId,
-    pub name: String,
-    pub life_total: i32,
-    pub library: ZoneId,
-    pub hand: ZoneId,
-    pub graveyard: ZoneId,
-}
-
-/// A game object that can exist in a zone
-#[derive(Clone, Debug)]
-pub struct Object {
-    pub id: ObjectId,
-    pub owner: PlayerId,
-    pub controller: PlayerId,
-
-    /// The action to be executed if/when this object is resolved from the top of the stack.
-    ///
-    /// Only relevant for objects on the stack.
-    /// This action will be added to the staging set and subject to replacement effects just like
-    /// any other.
-    pub resolve_action: Option<Box<dyn MtgAction>>,
-}
+use actions::{Action, ActionPayload};
+use game::GameDomain;
+use ids::{ActionId, ObserverId, PlayerId};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Controller {
@@ -42,39 +12,31 @@ pub enum Controller {
     Player(PlayerId),
 }
 
+/// An input the player can give to be consumed by the engine itself
 #[derive(Clone, Copy, Debug)]
-pub struct ConcreteObject {
-    pub zone: ZoneId,
-    pub object: ObjectId,
+pub enum EngineInput {
+    /// Used for:
+    /// - Picking a single candidate replacement effect when multiple could apply
+    /// - Picking the next action to queue up for execution when the order is ambiguous
+    ActionId(ActionId),
 }
 
 #[derive(Clone, Debug)]
-pub enum ObjectReference {
-    Concrete(ConcreteObject),
-    Abstract(ZoneLocation),
+pub enum PlayerInputPayload<TGame: GameDomain> {
+    /// Inputs intended for the engine itselfj
+    EngineInput(EngineInput),
+
+    /// Domain specific inputs understood by game specific observers
+    DomainInput(TGame::Input),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum MtgValue {
-    Number(i32),
-    Flag(bool),
-    Object(ObjectId),
-    Player(PlayerId),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum PlayerInputPayload {
-    Data(MtgValue),
-    FinishedInput,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct PlayerInput {
+#[derive(Clone, Debug)]
+pub struct PlayerInput<TGame: GameDomain> {
     pub source: PlayerId,
-    pub payload: PlayerInputPayload,
+    pub payload: PlayerInputPayload<TGame>,
 }
 
-pub trait BaseObserver: std::fmt::Debug {
+pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
     /// Who owns this effect.
     fn controller(&self) -> Controller {
         Controller::Game
@@ -89,7 +51,7 @@ pub trait BaseObserver: std::fmt::Debug {
 
     /// If this observer is no longer relevant, returning false from this method will cause it to
     /// be cleaned up.
-    fn alive(&self, _game: &GameState) -> bool {
+    fn alive(&self, _game: &TGame) -> bool {
         true
     }
 
@@ -100,11 +62,7 @@ pub trait BaseObserver: std::fmt::Debug {
     /// replacements may be picked based on a combination of game rules and player choice.
     ///
     /// Only domain actions may be modified
-    fn propose_replacement(
-        &self,
-        _action: &Action,
-        _game: &GameState,
-    ) -> Option<Box<dyn MtgAction>> {
+    fn propose_replacement(&self, _action: &Action<TGame>, _game: &TGame) -> Option<TGame::Action> {
         None
     }
 
@@ -115,9 +73,9 @@ pub trait BaseObserver: std::fmt::Debug {
     /// should add it to the game's staging action set.
     fn observe_action(
         &mut self,
-        _action: &Action,
-        _game_state: &GameState,
-        _emit_action: &mut dyn FnMut(ActionPayload),
+        _action: &Action<TGame>,
+        _game_state: &TGame,
+        _emit_action: &mut dyn FnMut(ActionPayload<TGame>),
     ) {
     }
 
@@ -132,25 +90,25 @@ pub trait BaseObserver: std::fmt::Debug {
     /// (perhaps just returning a Result<T, E> from this method)
     fn consume_input(
         &mut self,
-        _input: &PlayerInput,
-        _game_state: &GameState,
-        _emit_action: &mut dyn FnMut(ActionPayload),
+        _input: &PlayerInput<TGame>,
+        _game_state: &TGame,
+        _emit_action: &mut dyn FnMut(ActionPayload<TGame>),
     ) {
         panic!("Input being passed to an observer that has no consume_input implementation")
     }
 }
 
-pub trait Observer: BaseObserver {
-    fn clone_box(&self) -> Box<dyn Observer>;
+pub trait Observer<TGame: GameDomain>: BaseObserver<TGame> {
+    fn clone_box(&self) -> Box<dyn Observer<TGame>>;
 }
 
-impl<T: 'static + BaseObserver + Clone> Observer for T {
-    fn clone_box(&self) -> Box<dyn Observer> {
+impl<TGame: GameDomain, T: 'static + BaseObserver<TGame> + Clone> Observer<TGame> for T {
+    fn clone_box(&self) -> Box<dyn Observer<TGame>> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn Observer> {
+impl<TGame: GameDomain> Clone for Box<dyn Observer<TGame>> {
     fn clone(&self) -> Self {
         self.clone_box()
     }

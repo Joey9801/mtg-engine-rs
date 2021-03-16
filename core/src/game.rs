@@ -1,46 +1,32 @@
 use std::{
     collections::{HashMap, VecDeque},
+    fmt::Debug,
+    marker::PhantomData,
     rc::Rc,
 };
 
 use crate::{
     actions::{ActionPayload, EngineAction, InputRequest},
-    ids::{ActionId, IdGenerator, ObserverId, PlayerId, ZoneId},
-    steps::{GameStep, StartingStep, Step, SubStep},
-    zone::{NamedZone, Zone},
-    Action, Controller, Observer, Player, PlayerInput,
+    ids::{ActionId, IdGenerator, ObserverId},
+    Action, Controller, Observer, PlayerInput,
 };
 
-#[derive(Clone, Debug)]
-pub struct SharedZones {
-    pub battlefield: ZoneId,
-    pub stack: ZoneId,
-    pub exile: ZoneId,
-    pub command: ZoneId,
-    pub ante: ZoneId,
+pub trait GameDomainAction<TGame: GameDomain>: Clone + Debug {
+    fn apply(&self, state: &mut TGame);
+}
+
+pub trait GameDomain: Clone {
+    type Input: Clone + Debug;
+    type Action: GameDomainAction<Self>;
 }
 
 #[derive(Clone, Debug)]
-pub struct GameState {
-    /// Set of players in turn order
-    pub players: HashMap<PlayerId, Player>,
-
-    /// The first turn of the game is taken by the first element of this field.
-    pub turn_order: Vec<PlayerId>,
-
-    pub step: GameStep,
-    pub priority: Option<PlayerId>,
-    pub zones: HashMap<ZoneId, Zone>,
-    pub shared_zones: SharedZones,
-}
-
-#[derive(Clone, Debug)]
-pub struct ActionReplacementState {
+pub struct ActionReplacementState<TGame: GameDomain> {
     /// The action which is currently being considered for replacement
-    pub subject: Action,
+    pub subject: Action<TGame>,
 
     /// The candidate actions which could repalce the subject
-    pub candidates: Vec<Action>,
+    pub candidates: Vec<Action<TGame>>,
 
     /// The set of observers which have already had a candidate replacement accepted during this replacement chain
     pub used_observers: Vec<ObserverId>,
@@ -51,21 +37,23 @@ pub struct ActionReplacementState {
 /// In principal, all actions flow through each of the fields in turn. In practice some of the
 /// fields may be skipped internally in cases where there is no ambiguity.
 #[derive(Clone, Debug, Default)]
-pub struct ActionQueue {
+pub struct ActionQueue<TGame: GameDomain> {
     /// Actions that have been recieved, but have had no further processing
-    pub received: Vec<Action>,
+    pub received: Vec<Action<TGame>>,
 
     /// The state of the current partially complete/ambiguous replacement chain
-    pub partially_resolved_state: Option<ActionReplacementState>,
+    pub partially_resolved_state: Option<ActionReplacementState<TGame>>,
 
     /// Actions for which all replacements have been fully resolved, but have not yet been put in order for execution
-    pub resolved: Vec<Action>,
+    pub resolved: Vec<Action<TGame>>,
 
     /// The current set of actions for which ordering must be determined
-    pub staging: Vec<Action>,
+    pub staging: Vec<Action<TGame>>,
 
     /// Queue of actions to actually execute, fully resolved and in order
-    pub pending: VecDeque<Action>,
+    pub pending: VecDeque<Action<TGame>>,
+
+    _tgame: PhantomData<TGame>,
 }
 
 #[derive(Clone, Debug)]
@@ -84,9 +72,16 @@ enum ActionQueueStatus {
     Ready,
 }
 
-impl ActionQueue {
-    fn new() -> Self {
-        Default::default()
+impl<TGame: GameDomain> ActionQueue<TGame> {
+    pub fn new() -> Self {
+        Self {
+            received: Vec::new(),
+            partially_resolved_state: None,
+            resolved: Vec::new(),
+            staging: Vec::new(),
+            pending: VecDeque::new(),
+            _tgame: PhantomData,
+        }
     }
 
     /// There are no actions anywhere in the queue
@@ -105,8 +100,8 @@ impl ActionQueue {
     fn process(
         &mut self,
         id_gen: &mut IdGenerator<ActionId>,
-        observers: &HashMap<ObserverId, Box<dyn Observer>>,
-        game_state: &GameState,
+        observers: &HashMap<ObserverId, Box<dyn Observer<TGame>>>,
+        game_state: &TGame,
     ) -> ActionQueueStatus {
         if self.partially_resolved_state.is_some() {
             return ActionQueueStatus::AmbiguousReplacements;
@@ -117,7 +112,7 @@ impl ActionQueue {
         }
 
         while let Some(original) = self.received.pop() {
-            let mut original_rc: Option<Rc<Action>> = None;
+            let mut original_rc: Option<Rc<Action<TGame>>> = None;
 
             let mut candidate_replacements = Vec::new();
             for (oid, observer) in observers {
@@ -171,12 +166,12 @@ impl ActionQueue {
         }
     }
 
-    pub fn add(&mut self, action: Action) {
+    pub fn add(&mut self, action: Action<TGame>) {
         self.received.push(action);
     }
 
     /// Attempt to retrieve the next ready-to-execute action from the queue
-    pub fn pop_next(&mut self) -> Option<Action> {
+    pub fn pop_next(&mut self) -> Option<Action<TGame>> {
         if self.partially_resolved_state.is_some()
             || !self.resolved.is_empty()
             || !self.staging.is_empty()
@@ -192,7 +187,7 @@ impl ActionQueue {
 pub struct GameTimestamp(usize);
 
 impl GameTimestamp {
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Self(0)
     }
 
@@ -228,12 +223,12 @@ pub enum InputError {
 }
 
 #[derive(Clone, Debug)]
-pub struct Game {
+pub struct Game<TGame: GameDomain> {
     /// Actual state of the game being run
     ///
     /// Fields of Game other than this are considered implementation details of the engine, and not
     /// properties of the game being simulated.
-    pub game_state: GameState,
+    pub game_state: TGame,
 
     /// Incremented every time something happens to the game
     ///
@@ -243,7 +238,7 @@ pub struct Game {
     /// other action being executed, each of those emitted actions will have the same
     /// 'generated_at' timestamp.
     pub game_timestamp: GameTimestamp,
-    pub action_queue: ActionQueue,
+    pub action_queue: ActionQueue<TGame>,
     pub observer_id_gen: IdGenerator<ObserverId>,
     pub action_id_gen: IdGenerator<ActionId>,
     pub self_id: ObserverId,
@@ -251,20 +246,20 @@ pub struct Game {
     /// Storage for all obververs currently alive
     ///
     /// TODO: Not all observers have have implementations for each method in the trait.  This might
-    /// be made more efficient by storing which subsets of observers need, eg, `observer_action`
-    /// calling on them, and which observers doing so would be a waste of time.
+    /// be made more efficient by storing which subsets of observers need, eg, `observe_action`
+    /// calling on them, and which observers for which doing so would be a waste of time.
     /// Actually benchmark this in real-world cases though, the cost of maintaining the sets +
     /// dictionary lookups for every key might be more than the cost of just calling the dummy
     /// default implementations of the methods.
-    pub observers: HashMap<ObserverId, Box<dyn Observer>>,
+    pub observers: HashMap<ObserverId, Box<dyn Observer<TGame>>>,
 
     pub current_input_session: Option<InputSession>,
 }
 
 #[derive(Clone, Debug)]
-pub enum TickResult {
+pub enum TickResult<TGame: GameDomain> {
     /// The game ticked normally
-    Ticked(Action),
+    Ticked(Action<TGame>),
 
     /// The game requires player input before it can progress any further
     NeedPlayerInput,
@@ -274,70 +269,8 @@ pub enum TickResult {
     Stalled,
 }
 
-impl GameState {
-    pub fn stack(&self) -> &Zone {
-        self.zones
-            .get(&self.shared_zones.stack)
-            .expect("Can't find the stack")
-    }
-
-    pub fn stack_mut(&mut self) -> &mut Zone {
-        self.zones
-            .get_mut(&self.shared_zones.stack)
-            .expect("Can't find the stack")
-    }
-
-    pub fn battlefield(&self) -> &Zone {
-        self.zones
-            .get(&self.shared_zones.battlefield)
-            .expect("Can't find the battlefield")
-    }
-
-    pub fn battlefield_mut(&mut self) -> &mut Zone {
-        self.zones
-            .get_mut(&self.shared_zones.battlefield)
-            .expect("Can't find the battlefield")
-    }
-
-    pub fn exile(&self) -> &Zone {
-        self.zones
-            .get(&self.shared_zones.exile)
-            .expect("Can't find the exile zone")
-    }
-
-    pub fn exile_mut(&mut self) -> &mut Zone {
-        self.zones
-            .get_mut(&self.shared_zones.exile)
-            .expect("Can't find the exile zone")
-    }
-
-    pub fn command(&self) -> &Zone {
-        self.zones
-            .get(&self.shared_zones.command)
-            .expect("Can't find the command zone")
-    }
-
-    pub fn command_mut(&mut self) -> &mut Zone {
-        self.zones
-            .get_mut(&self.shared_zones.command)
-            .expect("Can't find the command zone")
-    }
-
-    pub fn ante(&self) -> &Zone {
-        self.zones
-            .get(&self.shared_zones.ante)
-            .expect("Can't find the ante zone")
-    }
-
-    pub fn ante_mut(&mut self) -> &mut Zone {
-        self.zones
-            .get_mut(&self.shared_zones.ante)
-            .expect("Can't find the ante zone")
-    }
-}
-
-impl Game {
-    fn apply_action(&mut self, action: &Action) {
+impl<TGame: GameDomain> Game<TGame> {
+    fn apply_action(&mut self, action: &Action<TGame>) {
         match &action.payload {
             ActionPayload::EngineAction(EngineAction::NoActions) => (),
             ActionPayload::EngineAction(EngineAction::RequestInput(request)) => {
@@ -356,7 +289,7 @@ impl Game {
 
     /// Broadcast the given action to all observers and add any actions emitted in reaction to the
     /// staging set
-    fn broadcast_action(&mut self, action: &Action) {
+    fn broadcast_action(&mut self, action: &Action<TGame>) {
         // Explicit references to fields of self, so that the overzealous closure borrow rules
         // don't freak out about it containing references to `self`.
         let action_queue = &mut self.action_queue;
@@ -379,7 +312,7 @@ impl Game {
     }
 
     /// Attempt to perform a single action
-    fn tick(&mut self) -> TickResult {
+    fn tick(&mut self) -> TickResult<TGame> {
         if self.current_input_session.is_some() {
             return TickResult::NeedPlayerInput;
         }
@@ -426,7 +359,7 @@ impl Game {
         }
     }
 
-    pub fn player_input(&mut self, input: PlayerInput) -> Result<(), InputError> {
+    pub fn player_input(&mut self, input: PlayerInput<TGame>) -> Result<(), InputError> {
         let curr_session = match &self.current_input_session {
             None => Err(InputError::NoInputSession)?,
             Some(session) => session,
@@ -469,167 +402,9 @@ impl Game {
         while let TickResult::Ticked(_) = self.tick() {}
     }
 
-    pub fn find_player<S: AsRef<str>>(&self, name: S) -> Option<PlayerId> {
-        self.game_state
-            .players
-            .values()
-            .filter(|p| p.name == name.as_ref())
-            .map(|p| p.id)
-            .next()
-    }
-
-    pub fn attach_observer(&mut self, mut o: Box<dyn Observer>) {
+    pub fn attach_observer(&mut self, mut o: Box<dyn Observer<TGame>>) {
         let id = self.observer_id_gen.next_id();
         o.set_id(id);
         self.observers.insert(id, o);
-    }
-}
-
-pub struct GameBuilder {
-    players: HashMap<PlayerId, Player>,
-    step: Option<GameStep>,
-    priority: Option<PlayerId>,
-    zones: HashMap<ZoneId, Zone>,
-    shared_zones: SharedZones,
-    starting_life_total: i32,
-
-    player_id_gen: IdGenerator<PlayerId>,
-    zone_id_gen: IdGenerator<ZoneId>,
-    implicit_turn_order: bool,
-}
-
-impl GameBuilder {
-    pub fn new() -> Self {
-        let player_id_gen = IdGenerator::<PlayerId>::new();
-        let mut zone_id_gen = IdGenerator::<ZoneId>::new();
-
-        let mut zones = HashMap::new();
-
-        // Insert the default shared zones
-        let battlefield_id = zone_id_gen.next_id();
-        zones.insert(battlefield_id, NamedZone::Battlefield.build(battlefield_id));
-
-        let stack_id = zone_id_gen.next_id();
-        zones.insert(stack_id, NamedZone::Stack.build(stack_id));
-
-        let exile_id = zone_id_gen.next_id();
-        zones.insert(exile_id, NamedZone::Exile.build(exile_id));
-
-        let command_id = zone_id_gen.next_id();
-        zones.insert(command_id, NamedZone::Command.build(command_id));
-
-        let ante_id = zone_id_gen.next_id();
-        zones.insert(ante_id, NamedZone::Ante.build(ante_id));
-
-        let shared_zones = SharedZones {
-            battlefield: battlefield_id,
-            stack: stack_id,
-            exile: exile_id,
-            command: command_id,
-            ante: ante_id,
-        };
-
-        Self {
-            players: HashMap::new(),
-            step: None,
-            priority: None,
-            zones,
-            shared_zones,
-            starting_life_total: 20,
-            player_id_gen,
-            zone_id_gen,
-            implicit_turn_order: false,
-        }
-    }
-
-    pub fn with_starting_life_total(mut self, x: i32) -> Self {
-        for p in self.players.values_mut() {
-            p.life_total = x;
-        }
-        self.starting_life_total = x;
-
-        self
-    }
-
-    pub fn with_player<S: AsRef<str>>(mut self, name: S) -> Self {
-        let player_id = self.player_id_gen.next_id();
-
-        let library_id = self.zone_id_gen.next_id();
-        let hand_id = self.zone_id_gen.next_id();
-        let graveyard_id = self.zone_id_gen.next_id();
-
-        self.zones
-            .insert(library_id, NamedZone::Library(player_id).build(library_id));
-        self.zones
-            .insert(hand_id, NamedZone::Hand(player_id).build(hand_id));
-        self.zones.insert(
-            graveyard_id,
-            NamedZone::Graveyard(player_id).build(graveyard_id),
-        );
-
-        let player = Player {
-            id: player_id,
-            name: name.as_ref().to_string(),
-            life_total: self.starting_life_total,
-            library: library_id,
-            hand: hand_id,
-            graveyard: graveyard_id,
-        };
-        self.players.insert(player_id, player);
-
-        self
-    }
-
-    pub fn with_initial_step(mut self, step: GameStep) -> Self {
-        self.step = Some(step);
-        self
-    }
-
-    /// Creates an implicit turn order by sorting the players on their name
-    pub fn with_implicit_turn_order(mut self) -> Self {
-        self.implicit_turn_order = true;
-        self
-    }
-
-    pub fn build(self) -> Game {
-        assert!(self.players.len() > 0);
-
-        let step = match self.step {
-            Some(s) => s,
-            None => GameStep {
-                active_player: *self.players.keys().next().unwrap(),
-                step: Step::Starting(StartingStep::Init),
-                substep: SubStep::InProgress,
-            },
-        };
-
-        let turn_order = if self.implicit_turn_order {
-            let mut players = self.players.values().collect::<Vec<_>>();
-            players.sort_by_key(|p| p.name.as_str());
-            players.iter().map(|p| p.id).collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
-
-        let mut observer_id_gen = IdGenerator::<ObserverId>::new();
-        let self_id = observer_id_gen.next_id();
-
-        Game {
-            game_state: GameState {
-                players: self.players,
-                turn_order,
-                step,
-                priority: self.priority,
-                zones: self.zones,
-                shared_zones: self.shared_zones,
-            },
-            action_id_gen: IdGenerator::new(),
-            action_queue: ActionQueue::new(),
-            observer_id_gen,
-            observers: HashMap::new(),
-            self_id,
-            game_timestamp: GameTimestamp::zero(),
-            current_input_session: None,
-        }
     }
 }

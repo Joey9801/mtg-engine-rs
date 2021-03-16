@@ -1,3 +1,4 @@
+/*
 use mtg_engine_core::{
     actions::{
         mtg_action::{MtgAction, PassPriority, SetPriority},
@@ -35,6 +36,8 @@ fn main() {
 
     dbg!(&game);
 
+    let _ = mtg_engine_core::base_rules::player_inputs::SpecialAction::EffectAction;
+
     let alice = game.find_player("alice").unwrap();
     let bob = game.find_player("bob").unwrap();
     let fake_oid = game.observer_id_gen.next_id();
@@ -69,3 +72,6 @@ fn main() {
     });
     game.tick_until_player_input();
 }
+*/
+
+fn main() {}

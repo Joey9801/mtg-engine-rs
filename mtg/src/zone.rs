@@ -1,9 +1,7 @@
 use std::{cmp::min, collections::HashMap};
 
-use crate::{
-    ids::{ObjectId, PlayerId, ZoneId},
-    Object,
-};
+use crate::Object;
+use mtg_engine_core::ids::{ObjectId, PlayerId, ZoneId};
 
 #[derive(Clone, Copy, Debug)]
 pub enum AbstractZoneLocation {

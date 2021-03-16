@@ -1,10 +1,6 @@
 use std::rc::Rc;
 
-use crate::{game::GameTimestamp, ids::ActionId, Controller, ObserverId, PlayerId};
-
-use self::mtg_action::MtgAction;
-
-pub mod mtg_action;
+use crate::{game::GameTimestamp, ids::ActionId, Controller, GameDomain, ObserverId, PlayerId};
 
 #[derive(Clone, Debug)]
 pub struct InputRequest {
@@ -44,18 +40,18 @@ pub enum EngineAction {
 }
 
 #[derive(Clone, Debug)]
-pub enum ActionPayload {
+pub enum ActionPayload<TGame: GameDomain> {
     /// An action that represents some core engine activity unrelated to any domain state
     EngineAction(EngineAction),
 
     /// An action that represents an atomic modification to the domain state
-    DomainAction(Box<dyn MtgAction>),
+    DomainAction(TGame::Action),
 }
 
 #[derive(Clone, Debug)]
-pub struct Action {
+pub struct Action<TGame: GameDomain> {
     /// The actual sub-operation that this action will perform
-    pub payload: ActionPayload,
+    pub payload: ActionPayload<TGame>,
 
     /// The player controlling this action, if any
     ///
@@ -80,10 +76,10 @@ pub struct Action {
     pub generated_at: GameTimestamp,
 
     /// If this action was the result of a replacement effect, the original action that it replaced
-    pub original: Option<Rc<Action>>,
+    pub original: Option<Rc<Action<TGame>>>,
 }
 
-impl Action {
+impl<TGame: GameDomain> Action<TGame> {
     pub fn root_source(&self) -> ObserverId {
         match &self.original {
             Some(a) => a.root_source(),

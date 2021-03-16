@@ -1,15 +1,15 @@
-use std::{any::Any, hash::BuildHasherDefault};
+use std::any::Any;
+
+use mtg_engine_core::{game::GameDomainAction, ids::PlayerId};
 
 use crate::{
-    game::{self, GameState},
-    ids::PlayerId,
     steps::{GameStep, Step, SubStep},
     zone::ZoneLocation,
-    ObjectReference,
+    MtgGameState, ObjectReference,
 };
 
 pub trait BaseMtgAction: std::fmt::Debug + std::any::Any {
-    fn apply(&self, game_state: &mut GameState);
+    fn apply(&self, game_state: &mut MtgGameState);
 }
 
 pub trait AsAny {
@@ -38,6 +38,13 @@ impl Clone for Box<dyn MtgAction> {
     }
 }
 
+impl GameDomainAction<MtgGameState> for Box<dyn MtgAction> {
+    fn apply(&self, state: &mut MtgGameState) {
+        let s: &dyn MtgAction = &**self;
+        BaseMtgAction::apply(s, state);
+    }
+}
+
 pub trait MtgActionDowncast {
     fn downcast_ref<T: BaseMtgAction>(&self) -> Option<&T>;
 
@@ -59,7 +66,7 @@ pub struct CompositeAction {
 }
 
 impl BaseMtgAction for CompositeAction {
-    fn apply(&self, game_state: &mut GameState) {
+    fn apply(&self, game_state: &mut MtgGameState) {
         for sub_action in &self.components {
             sub_action.apply(game_state);
         }
@@ -74,7 +81,7 @@ pub struct AdvanceStep {
 }
 
 impl BaseMtgAction for AdvanceStep {
-    fn apply(&self, game_state: &mut GameState) {
+    fn apply(&self, game_state: &mut MtgGameState) {
         game_state.step = GameStep {
             active_player: self.new_active_player,
             step: self.new_step,
@@ -89,7 +96,7 @@ pub struct SetPriority {
 }
 
 impl BaseMtgAction for SetPriority {
-    fn apply(&self, game_state: &mut GameState) {
+    fn apply(&self, game_state: &mut MtgGameState) {
         game_state.priority = Some(self.new_priority);
     }
 }
@@ -98,7 +105,7 @@ impl BaseMtgAction for SetPriority {
 pub struct PassPriority;
 
 impl BaseMtgAction for PassPriority {
-    fn apply(&self, game_state: &mut GameState) {
+    fn apply(&self, game_state: &mut MtgGameState) {
         game_state.priority = None;
     }
 }
@@ -110,7 +117,7 @@ pub struct ChangeObjectZone {
 }
 
 impl BaseMtgAction for ChangeObjectZone {
-    fn apply(&self, game_state: &mut GameState) {
+    fn apply(&self, game_state: &mut MtgGameState) {
         let obj = match self.obj_ref {
             ObjectReference::Concrete(concrete_obj) => game_state
                 .zones

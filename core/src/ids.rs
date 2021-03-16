@@ -11,17 +11,26 @@ impl<T> IdGenerator<T> {
             _phantom: std::marker::PhantomData::<T>,
         }
     }
+
+    pub fn counter(&self) -> usize {
+        self.counter
+    }
+
+    pub fn incr(&mut self) {
+        self.counter += 1;
+    }
 }
 
+#[macro_export]
 macro_rules! make_id_type {
     ($name:ident) => {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name(usize);
 
-        impl IdGenerator<$name> {
+        impl $crate::ids::IdGenerator<$name> {
             pub fn next_id(&mut self) -> $name {
-                let ret = $name(self.counter);
-                self.counter += 1;
+                let ret = $name(self.counter());
+                self.incr();
                 ret
             }
         }
@@ -41,7 +50,9 @@ macro_rules! make_id_type {
 }
 
 make_id_type!(PlayerId);
-make_id_type!(ObjectId);
 make_id_type!(ObserverId);
-make_id_type!(ZoneId);
 make_id_type!(ActionId);
+
+make_id_type!(AbilityId);
+make_id_type!(ObjectId);
+make_id_type!(ZoneId);
