@@ -7,7 +7,6 @@
 
 use core::{
     actions::{Action, ActionPayload, EngineAction, InputRequest},
-    game,
     ids::{ObserverId, PlayerId},
     BaseObserver, PlayerInput,
 };
@@ -15,7 +14,7 @@ use core::{
 use crate::{
     action::{AdvanceStep, MtgAction, MtgActionDowncast, PassPriority, SetPriority},
     game::Mtg,
-    player_inputs::{MtgInput, PriorityInput},
+    player_inputs::PriorityInput,
     steps::{BeginningStep, CombatStep, EndStep, GameStep, Step, SubStep},
 };
 
@@ -119,7 +118,7 @@ impl StepsAndPriority {
         &mut self,
         source: PlayerId,
         input: &PriorityInput,
-        game_state: &Mtg,
+        _game_state: &Mtg,
         emit_action: &mut dyn FnMut(ActionPayload<Mtg>),
     ) {
         match input {
