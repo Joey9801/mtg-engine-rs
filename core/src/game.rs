@@ -276,6 +276,11 @@ pub enum TickResult<TGame: GameDomain> {
 impl<TGame: GameDomain> Game<TGame> {
     fn apply_action(&mut self, action: &Action<TGame>) {
         match &action.payload {
+            ActionPayload::Composite(sub_actions) => {
+                for sub_action in sub_actions {
+                    self.apply_action(sub_action);
+                }
+            }
             ActionPayload::EngineAction(EngineAction::NoActions) => (),
             ActionPayload::EngineAction(EngineAction::RequestInput(request)) => {
                 debug_assert!(self.current_input_session.is_none());
@@ -296,6 +301,16 @@ impl<TGame: GameDomain> Game<TGame> {
     /// Broadcast the given action to all observers and add any actions emitted in reaction to the
     /// staging set
     fn broadcast_action(&mut self, action: &Action<TGame>) {
+        // The composite action payload is just a bookkeeping structure for
+        // action ordering, it doesn't have any semantic meaning that needs to
+        // be broadcast to the observers.
+        if let ActionPayload::Composite(sub_actions) = &action.payload {
+            for sub_action in sub_actions {
+                self.broadcast_action(sub_action);
+            }
+            return;
+        }
+
         // Explicit references to fields of self, so that the overzealous closure borrow rules
         // don't freak out about it containing references to `self`.
         let action_queue = &mut self.action_queue;
