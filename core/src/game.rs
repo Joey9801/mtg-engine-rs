@@ -7,8 +7,8 @@ use std::{
 
 use crate::{
     actions::{ActionPayload, EngineAction, InputRequest},
-    ids::{ActionId, IdGenerator, ObserverId},
-    Action, Controller, Observer, PlayerInput,
+    ids::{ActionId, IdGenerator, ObserverId, PlayerId},
+    Action, Observer, PlayerInput,
 };
 
 pub trait GameDomainAction<TGame: GameDomain>: Clone + Debug {
@@ -124,7 +124,6 @@ impl<TGame: GameDomain> ActionQueue<TGame> {
 
                     candidate_replacements.push(Action {
                         payload: ActionPayload::DomainAction(candidate),
-                        controller: observer.controller(),
                         source: *oid,
                         id: id_gen.next_id(),
                         generated_at: original.generated_at,
@@ -145,6 +144,10 @@ impl<TGame: GameDomain> ActionQueue<TGame> {
                 });
                 return ActionQueueStatus::AmbiguousReplacements;
             }
+        }
+        
+        if self.resolved.len() > 1 {
+            println!("WARN: Not correctly sorting {} actions", self.resolved.len());
         }
 
         // TODO: Any sort of attempt to sort the resolved action set, rather than just smashing
@@ -205,6 +208,7 @@ pub struct InputSession {
     handler: ObserverId,
 }
 
+#[derive(Clone, Debug)]
 pub enum InputError {
     /// The observer managing the current input session rejected the input with the given message
     Rejected(String),
@@ -280,7 +284,9 @@ impl<TGame: GameDomain> Game<TGame> {
                     request: request.clone(),
                 });
             }
-            ActionPayload::EngineAction(EngineAction::EndInput) => (),
+            ActionPayload::EngineAction(EngineAction::EndInput) => {
+                self.current_input_session = None;
+            },
             ActionPayload::EngineAction(EngineAction::PickNextAction(_)) => todo!(),
             ActionPayload::EngineAction(EngineAction::PickReplacement(_)) => todo!(),
             ActionPayload::DomainAction(da) => da.apply(&mut self.game_state),
@@ -297,11 +303,9 @@ impl<TGame: GameDomain> Game<TGame> {
         let timestamp = self.game_timestamp;
 
         for (oid, o) in self.observers.iter_mut() {
-            let controller = o.controller();
             o.observe_action(action, &self.game_state, &mut |reacting_action| {
                 action_queue.add(Action {
                     payload: reacting_action,
-                    controller,
                     source: *oid,
                     id: action_id_gen.next_id(),
                     original: None,
@@ -339,7 +343,6 @@ impl<TGame: GameDomain> Game<TGame> {
                 // Generate a dummy game action to let the observers know that the game ticked while empty
                 let action = Action {
                     payload: ActionPayload::EngineAction(EngineAction::NoActions),
-                    controller: Controller::Game,
                     source: self.self_id,
                     id: self.action_id_gen.next_id(),
                     original: None,
@@ -385,7 +388,6 @@ impl<TGame: GameDomain> Game<TGame> {
             let action_id = self.action_id_gen.next_id();
             let action = Action {
                 payload: action_payload,
-                controller: Controller::Player(input.source),
                 source: handler_id,
                 id: action_id,
                 generated_at: self.game_timestamp,
@@ -400,6 +402,12 @@ impl<TGame: GameDomain> Game<TGame> {
 
     pub fn tick_until_player_input(&mut self) {
         while let TickResult::Ticked(_) = self.tick() {}
+    }
+    
+    pub fn expecting_input_from(&self) -> Option<PlayerId> {
+        self.current_input_session
+            .as_ref()
+            .map(|s| s.request.from_player)
     }
 
     pub fn attach_observer(&mut self, mut o: Box<dyn Observer<TGame>>) {

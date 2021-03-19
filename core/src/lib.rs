@@ -1,3 +1,9 @@
+//! This crate implements core state machine logic in a manner that is independent of any particular game
+//!
+//! The nature and name of the primitives implemented by this core are certainly influenced by
+//! Magic the Gathering, though they are general purpose enough that they could be used to
+//! implement any state based game.
+
 pub mod actions;
 pub mod game;
 pub mod ids;
@@ -5,12 +11,6 @@ pub mod ids;
 use actions::{Action, ActionPayload};
 use game::GameDomain;
 use ids::{ActionId, ObserverId, PlayerId};
-
-#[derive(Clone, Copy, Debug)]
-pub enum Controller {
-    Game,
-    Player(PlayerId),
-}
 
 /// An input the player can give to be consumed by the engine itself
 #[derive(Clone, Copy, Debug)]
@@ -30,18 +30,26 @@ pub enum PlayerInputPayload<TGame: GameDomain> {
     DomainInput(TGame::Input),
 }
 
+impl<TGame: GameDomain> PlayerInputPayload<TGame> {
+    pub fn as_domain_input(&self) -> Option<&TGame::Input> {
+        if let Self::DomainInput(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct PlayerInput<TGame: GameDomain> {
     pub source: PlayerId,
     pub payload: PlayerInputPayload<TGame>,
 }
 
+/// Describes an entity that watches/reacts/interjects game actions as they are queued/executed
+///
+/// This is the primary mechanism for implementing custom game state machines.
 pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
-    /// Who owns this effect.
-    fn controller(&self) -> Controller {
-        Controller::Game
-    }
-
     /// Called once when the game allocates this observer its globally unique ID
     ///
     /// Any actions emitted by a given observer will have that observers ID attached to them by the
@@ -57,7 +65,7 @@ pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
 
     /// An opportunity for this observer to mutate an action before it gets queued for application.
     ///
-    /// Replacement actions proposed in this manner are not gauranteed to be applied. In particular
+    /// Replacement actions proposed in this manner are not guaranteed to be applied. In particular
     /// if there are multiple competing replacement actions, either one or zero of those
     /// replacements may be picked based on a combination of game rules and player choice.
     ///
@@ -66,11 +74,12 @@ pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
         None
     }
 
-    /// The given action has just been applied to the game state, this is this effect's chance to
+    /// The given action has just been applied to the game state, this is this observer's chance to
     /// react to it.
     ///
-    /// If this effect would like to perform another action in reaction to the observed one, it
-    /// should add it to the game's staging action set.
+    /// Arbitrarily many actions may be emitted through calls to the given emit_action callback.
+    /// The order in which any actions are emitted has no effect on the eventual execution order of
+    /// those actions; they will be treated equally by the action ordering process.
     fn observe_action(
         &mut self,
         _action: &Action<TGame>,
@@ -83,8 +92,9 @@ pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
     /// input the player makes
     ///
     /// Actions emitted from this method will be applied to the game immediately, bypassing the
-    /// regular action queue. The game will continue requesting input from the player until the
-    /// EndInput action is emitted.
+    /// regular action queue.
+    /// The game will continue requesting input from the player until the EndInput action is
+    /// emitted from this method.
     ///
     /// TODO: Add a mechanism for the observer to indicate that the given input was invalid
     /// (perhaps just returning a Result<T, E> from this method)

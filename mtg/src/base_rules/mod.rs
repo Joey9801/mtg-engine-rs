@@ -1,13 +1,13 @@
-use mtg_engine_core::game::Game;
+use core::game::Game;
 
 pub mod progression;
 pub mod state_actions;
 
-use crate::MtgGameState;
+use crate::game::Mtg;
 use progression::StepsAndPriority;
 use state_actions::StateBasedActions;
 
-pub fn attach(game: &mut Game<MtgGameState>) {
+pub fn attach(game: &mut Game<Mtg>) {
     game.attach_observer(Box::new(StateBasedActions {}));
     game.attach_observer(Box::new(StepsAndPriority::new()));
 }

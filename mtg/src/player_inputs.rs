@@ -1,4 +1,4 @@
-use mtg_engine_core::ids::{ObjectId, PlayerId};
+use core::ids::{ObjectId, PlayerId};
 
 /// The 10 special actions defined in 116.2
 #[derive(Clone, Copy, Debug)]
@@ -107,4 +107,14 @@ pub enum MtgInput {
     /// Is /not/ for passing priority, which is a separate specific input in
     /// [PriorityInput](enum.PriorityInput.html).
     Finished,
+}
+
+impl MtgInput {
+    pub fn as_priority_input(&self) -> Option<&PriorityInput> {
+        if let Self::PriorityInput(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }

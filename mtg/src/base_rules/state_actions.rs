@@ -2,36 +2,32 @@
 //!
 //! See section 704 of the comprehensive rules
 
-use mtg_engine_core::{
+use core::{
     actions::{Action, ActionPayload},
-    BaseObserver, Controller,
+    BaseObserver,
 };
 
 use crate::{
-    mtg_action::{CompositeAction, MtgAction, MtgActionDowncast, SetPriority},
-    MtgGameState,
+    action::{CompositeAction, MtgAction, MtgActionDowncast, SetPriority},
+    game::Mtg,
 };
 
 #[derive(Debug, Clone)]
 pub struct StateBasedActions {}
 
 impl StateBasedActions {
-    fn generate_actions(&self, _game_state: &MtgGameState) -> Option<CompositeAction> {
+    fn generate_actions(&self, _game_state: &Mtg) -> Option<CompositeAction> {
         // TODO: actually form a list of state based actions to take
         println!("Checking for state-based actions");
         None
     }
 }
 
-impl BaseObserver<MtgGameState> for StateBasedActions {
-    fn controller(&self) -> Controller {
-        Controller::Game
-    }
-
+impl BaseObserver<Mtg> for StateBasedActions {
     fn propose_replacement(
         &self,
-        action: &Action<MtgGameState>,
-        game_state: &MtgGameState,
+        action: &Action<Mtg>,
+        game_state: &Mtg,
     ) -> Option<Box<dyn MtgAction>> {
         if let ActionPayload::DomainAction(a) = &action.payload {
             if a.is::<SetPriority>() {

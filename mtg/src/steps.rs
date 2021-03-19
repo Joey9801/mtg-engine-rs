@@ -59,6 +59,18 @@ pub enum SubStep {
     Ending,
 }
 
+impl SubStep {
+    /// Returns `true` if the sub_step is [`InProgress`].
+    pub fn is_in_progress(&self) -> bool {
+        matches!(self, Self::InProgress)
+    }
+
+    /// Returns `true` if the sub_step is [`Ending`].
+    pub fn is_ending(&self) -> bool {
+        matches!(self, Self::Ending)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct GameStep {
     pub active_player: PlayerId,

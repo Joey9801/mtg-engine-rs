@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{game::GameTimestamp, ids::ActionId, Controller, GameDomain, ObserverId, PlayerId};
+use crate::{game::GameTimestamp, ids::ActionId, GameDomain, ObserverId, PlayerId};
 
 #[derive(Clone, Debug)]
 pub struct InputRequest {
@@ -52,12 +52,6 @@ pub enum ActionPayload<TGame: GameDomain> {
 pub struct Action<TGame: GameDomain> {
     /// The actual sub-operation that this action will perform
     pub payload: ActionPayload<TGame>,
-
-    /// The player controlling this action, if any
-    ///
-    /// Necessary as part of ordering simultaneous actions.
-    /// Will be None if the action originated from the game itself
-    pub controller: Controller,
 
     /// The observer that added this action to the queue
     pub source: ObserverId,

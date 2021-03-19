@@ -1,15 +1,16 @@
 use std::any::Any;
 
-use mtg_engine_core::{game::GameDomainAction, ids::PlayerId};
+use core::{game::GameDomainAction, ids::PlayerId};
 
 use crate::{
     steps::{GameStep, Step, SubStep},
     zone::ZoneLocation,
-    MtgGameState, ObjectReference,
+    game::Mtg,
+    ObjectReference,
 };
 
 pub trait BaseMtgAction: std::fmt::Debug + std::any::Any {
-    fn apply(&self, game_state: &mut MtgGameState);
+    fn apply(&self, game_state: &mut Mtg);
 }
 
 pub trait AsAny {
@@ -38,23 +39,23 @@ impl Clone for Box<dyn MtgAction> {
     }
 }
 
-impl GameDomainAction<MtgGameState> for Box<dyn MtgAction> {
-    fn apply(&self, state: &mut MtgGameState) {
+impl GameDomainAction<Mtg> for Box<dyn MtgAction> {
+    fn apply(&self, state: &mut Mtg) {
         let s: &dyn MtgAction = &**self;
         BaseMtgAction::apply(s, state);
     }
 }
 
 pub trait MtgActionDowncast {
-    fn downcast_ref<T: BaseMtgAction>(&self) -> Option<&T>;
+    fn as_t<T: BaseMtgAction>(&self) -> Option<&T>;
 
     fn is<T: BaseMtgAction>(&self) -> bool {
-        self.downcast_ref::<T>().is_some()
+        self.as_t::<T>().is_some()
     }
 }
 
 impl MtgActionDowncast for Box<dyn MtgAction> {
-    fn downcast_ref<T: BaseMtgAction>(&self) -> Option<&T> {
+    fn as_t<T: BaseMtgAction>(&self) -> Option<&T> {
         self.as_any().downcast_ref()
     }
 }
@@ -66,13 +67,14 @@ pub struct CompositeAction {
 }
 
 impl BaseMtgAction for CompositeAction {
-    fn apply(&self, game_state: &mut MtgGameState) {
+    fn apply(&self, game_state: &mut Mtg) {
         for sub_action in &self.components {
             sub_action.apply(game_state);
         }
     }
 }
 
+/// Sets the game step/substep/active player in one atomic action
 #[derive(Clone, Debug)]
 pub struct AdvanceStep {
     pub new_step: Step,
@@ -81,7 +83,7 @@ pub struct AdvanceStep {
 }
 
 impl BaseMtgAction for AdvanceStep {
-    fn apply(&self, game_state: &mut MtgGameState) {
+    fn apply(&self, game_state: &mut Mtg) {
         game_state.step = GameStep {
             active_player: self.new_active_player,
             step: self.new_step,
@@ -90,26 +92,34 @@ impl BaseMtgAction for AdvanceStep {
     }
 }
 
+/// Sets the current priority holder
 #[derive(Clone, Debug)]
 pub struct SetPriority {
     pub new_priority: PlayerId,
 }
 
 impl BaseMtgAction for SetPriority {
-    fn apply(&self, game_state: &mut MtgGameState) {
+    fn apply(&self, game_state: &mut Mtg) {
         game_state.priority = Some(self.new_priority);
     }
 }
 
+/// Clears the current priority holder
 #[derive(Clone, Debug)]
-pub struct PassPriority;
+pub struct PassPriority {
+    /// The player that is passing priority
+    pub player: PlayerId,
+}
 
 impl BaseMtgAction for PassPriority {
-    fn apply(&self, game_state: &mut MtgGameState) {
+    fn apply(&self, game_state: &mut Mtg) {
         game_state.priority = None;
     }
 }
 
+/// Attempt to move the given object to a new zone
+///
+/// Quietly does nothing if the object cannot be found
 #[derive(Clone, Debug)]
 pub struct ChangeObjectZone {
     pub obj_ref: ObjectReference,
@@ -117,7 +127,7 @@ pub struct ChangeObjectZone {
 }
 
 impl BaseMtgAction for ChangeObjectZone {
-    fn apply(&self, game_state: &mut MtgGameState) {
+    fn apply(&self, game_state: &mut Mtg) {
         let obj = match self.obj_ref {
             ObjectReference::Concrete(concrete_obj) => game_state
                 .zones

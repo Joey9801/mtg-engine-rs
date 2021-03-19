@@ -1,7 +1,7 @@
 use std::{cmp::min, collections::HashMap};
 
 use crate::Object;
-use mtg_engine_core::ids::{ObjectId, PlayerId, ZoneId};
+use core::ids::{ObjectId, PlayerId, ZoneId};
 
 #[derive(Clone, Copy, Debug)]
 pub enum AbstractZoneLocation {
@@ -104,6 +104,17 @@ impl Zone {
         }
 
         Some(obj)
+    }
+    
+    pub fn top(&self) -> Option<&Object> {
+        if let Some(ordering) = &self.ordering {
+            ordering
+                .last()
+                .map(|id| self.storage.get(id))
+                .flatten()
+        } else {
+            None
+        }
     }
 }
 
