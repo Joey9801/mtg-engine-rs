@@ -202,10 +202,10 @@ impl GameTimestamp {
 #[derive(Clone, Debug)]
 pub struct InputSession {
     /// The original input request
-    request: InputRequest,
+    pub request: InputRequest,
 
     /// The observer that requested this input session, to which each input will be sent
-    handler: ObserverId,
+    pub handler: ObserverId,
 }
 
 #[derive(Clone, Debug)]
@@ -331,7 +331,7 @@ impl<TGame: GameDomain> Game<TGame> {
     }
 
     /// Attempt to perform a single action
-    fn tick(&mut self) -> TickResult<TGame> {
+    pub fn tick(&mut self) -> TickResult<TGame> {
         if self.current_input_session.is_some() {
             return TickResult::NeedPlayerInput;
         }
