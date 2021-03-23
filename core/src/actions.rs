@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{game::GameTimestamp, ids::ActionId, GameDomain, ObserverId, PlayerId};
+use crate::{game::GameTimestamp, ids::ActionId, GameDomain, Observer, ObserverId, PlayerId};
 
 #[derive(Clone, Debug)]
 pub struct InputRequest {
@@ -16,7 +16,7 @@ pub struct InputRequest {
 }
 
 #[derive(Clone, Debug)]
-pub enum EngineAction {
+pub enum EngineAction<TGame: GameDomain> {
     /// Dummy action emitted by the game each time it is ticked with no actions in any queue
     ///
     /// The execution of this action has no effect on any game state
@@ -37,12 +37,20 @@ pub enum EngineAction {
 
     /// Picks the given action as the first one from the staging set that should be executed
     PickNextAction(ActionId),
+
+    /// Attaches the given new observer to the engine
+    ///
+    /// The newly attached observer will be notified of its own ID via the `set_id` method before
+    /// it observes any actions.
+    /// The first action the newly attached observer will observe will be the action that attached
+    /// it to the game.
+    AttachObserver(Box<dyn Observer<TGame>>),
 }
 
 #[derive(Clone, Debug)]
 pub enum ActionPayload<TGame: GameDomain> {
     /// An action that represents some core engine activity unrelated to any domain state
-    EngineAction(EngineAction),
+    EngineAction(EngineAction<TGame>),
 
     /// An action that represents an atomic modification to the domain state
     DomainAction(TGame::Action),

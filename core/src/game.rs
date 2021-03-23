@@ -297,6 +297,9 @@ impl<TGame: GameDomain> Game<TGame> {
             }
             ActionPayload::EngineAction(EngineAction::PickNextAction(_)) => todo!(),
             ActionPayload::EngineAction(EngineAction::PickReplacement(_)) => todo!(),
+            ActionPayload::EngineAction(EngineAction::AttachObserver(o)) => {
+                self.attach_observer(o.clone())
+            }
             ActionPayload::DomainAction(da) => da.apply(&mut self.game_state),
         }
     }

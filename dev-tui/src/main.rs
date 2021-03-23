@@ -6,9 +6,7 @@ use core::{
 use cursive::{
     event::Key,
     traits::{Boxable, Finder, Nameable, Scrollable},
-    views::{
-        Dialog, EditView, LinearLayout, Panel, SelectView, TextView, ViewRef,
-    },
+    views::{Dialog, EditView, LinearLayout, Panel, SelectView, TextView, ViewRef},
     Cursive,
 };
 use mtg::{
@@ -76,6 +74,7 @@ fn render_action(action: &Action<Mtg>) -> String {
                 String::from("-- ambiguous replacement resolution --")
             }
             EngineAction::PickNextAction(_) => String::from("-- ambiguous ordering resolution --"),
+            EngineAction::AttachObserver(o) => format!("Attaching new observer: {:?}", o),
         },
         ActionPayload::DomainAction(da) => render_domain_action(&da),
         ActionPayload::Composite(_) => String::from(" -- Composite action --"),
