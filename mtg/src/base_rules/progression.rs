@@ -8,7 +8,7 @@
 use core::{
     actions::{Action, ActionPayload, EngineAction, InputRequest},
     ids::{ObserverId, PlayerId},
-    BaseObserver, PlayerInput,
+    ActionSink, BaseObserver, PlayerInput,
 };
 
 use crate::{
@@ -146,7 +146,7 @@ impl BaseObserver<Mtg> for StepsAndPriority {
         &mut self,
         action: &Action<Mtg>,
         game_state: &Mtg,
-        emit_action: &mut dyn FnMut(ActionPayload<Mtg>),
+        sink: &mut dyn ActionSink<Mtg>,
     ) {
         let self_id = self.id.expect("Don't have self id");
 
@@ -167,7 +167,7 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                             "Requesting priority input. Expecting MtgInput::PriorityInput(_)"
                         ),
                     };
-                    emit_action(ActionPayload::EngineAction(EngineAction::RequestInput(
+                    sink.emit_single(ActionPayload::EngineAction(EngineAction::RequestInput(
                         input_req.clone(),
                     )));
                     self.current_input_request = Some(ExpectedInput::Priority(priority_player));
@@ -181,7 +181,7 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                             new_substep: next_step.substep,
                             new_active_player: next_step.active_player,
                         }) as Box<dyn MtgAction>;
-                        emit_action(ActionPayload::DomainAction(action));
+                        sink.emit_single(ActionPayload::DomainAction(action));
                     } else {
                         // There should be a player ready to receive priority
                         let set_prio_action = Box::new(SetPriority {
@@ -189,13 +189,13 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                                 .next_priority
                                 .expect("Don't know who should recieve priority next"),
                         }) as Box<dyn MtgAction>;
-                        emit_action(ActionPayload::DomainAction(set_prio_action));
+                        sink.emit_single(ActionPayload::DomainAction(set_prio_action));
                     }
                 }
             }
             ActionPayload::EngineAction(EngineAction::EndInput) if action.source == self_id => {
                 for action in self.post_input_actions.drain(..) {
-                    emit_action(action);
+                    sink.emit_single(action);
                 }
             }
             ActionPayload::DomainAction(da) if da.is::<PassPriority>() => {
@@ -218,7 +218,7 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                             .clone()
                             .expect("Top of stack has no resolve action");
 
-                        emit_action(ActionPayload::DomainAction(resolve_action));
+                        sink.emit_single(ActionPayload::DomainAction(resolve_action));
                         self.next_priority = Some(game_state.step.active_player);
                     } else {
                         // There is nothing on the stack to resolve. Begin ending this step.
@@ -227,7 +227,7 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                             new_substep: SubStep::Ending,
                             new_active_player: game_state.step.active_player,
                         }) as Box<dyn MtgAction>;
-                        emit_action(ActionPayload::DomainAction(advance_step_ending));
+                        sink.emit_single(ActionPayload::DomainAction(advance_step_ending));
 
                         // This should be set to some value when the next step is seen starting
                         // Don't set it right away, as the active player on the next step could be

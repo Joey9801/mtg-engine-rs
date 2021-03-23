@@ -1,7 +1,5 @@
 use core::{
-    actions::{Action, ActionPayload},
-    game::Game,
-    BaseObserver, PlayerInput, PlayerInputPayload,
+    actions::Action, game::Game, ActionSink, BaseObserver, PlayerInput, PlayerInputPayload,
 };
 use std::time::Instant;
 
@@ -20,7 +18,7 @@ impl BaseObserver<Mtg> for StdoutDebugObserver {
         &mut self,
         action: &Action<Mtg>,
         _game: &Mtg,
-        _emit_action: &mut dyn FnMut(ActionPayload<Mtg>),
+        _sink: &mut dyn ActionSink<Mtg>,
     ) {
         dbg!(action);
     }

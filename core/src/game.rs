@@ -8,7 +8,7 @@ use std::{
 use crate::{
     actions::{ActionPayload, EngineAction, InputRequest},
     ids::{ActionId, IdGenerator, ObserverId, PlayerId},
-    Action, Observer, PlayerInput,
+    Action, ActionSink, Observer, PlayerInput,
 };
 
 pub trait GameDomainAction<TGame: GameDomain>: Clone + Debug {
@@ -276,6 +276,25 @@ pub enum TickResult<TGame: GameDomain> {
     Stalled,
 }
 
+struct ActionSinker<'a, TGame: GameDomain> {
+    id_gen: &'a mut IdGenerator<ActionId>,
+    queue: &'a mut ActionQueue<TGame>,
+    timestamp: GameTimestamp,
+    oid: Option<ObserverId>,
+}
+
+impl<'a, TGame: GameDomain> ActionSink<TGame> for ActionSinker<'a, TGame> {
+    fn emit_single(&mut self, new_action: ActionPayload<TGame>) {
+        self.queue.add(Action {
+            payload: new_action,
+            source: self.oid.expect("ActionSinker OID not set"),
+            id: self.id_gen.next_id(),
+            original: None,
+            generated_at: self.timestamp,
+        })
+    }
+}
+
 impl<TGame: GameDomain> Game<TGame> {
     fn apply_action(&mut self, action: &Action<TGame>) {
         match &action.payload {
@@ -317,22 +336,16 @@ impl<TGame: GameDomain> Game<TGame> {
             return;
         }
 
-        // Explicit references to fields of self, so that the overzealous closure borrow rules
-        // don't freak out about it containing references to `self`.
-        let action_queue = &mut self.action_queue;
-        let action_id_gen = &mut self.action_id_gen;
-        let timestamp = self.game_timestamp;
+        let mut sink = ActionSinker {
+            id_gen: &mut self.action_id_gen,
+            queue: &mut self.action_queue,
+            timestamp: self.game_timestamp,
+            oid: None,
+        };
 
         for (oid, o) in self.observers.iter_mut() {
-            o.observe_action(action, &self.game_state, &mut |reacting_action| {
-                action_queue.add(Action {
-                    payload: reacting_action,
-                    source: *oid,
-                    id: action_id_gen.next_id(),
-                    original: None,
-                    generated_at: timestamp,
-                });
-            });
+            sink.oid = Some(*oid);
+            o.observe_action(action, &self.game_state, &mut sink);
         }
     }
 

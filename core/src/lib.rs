@@ -46,6 +46,10 @@ pub struct PlayerInput<TGame: GameDomain> {
     pub payload: PlayerInputPayload<TGame>,
 }
 
+pub trait ActionSink<TGame: GameDomain> {
+    fn emit_single(&mut self, new_action: ActionPayload<TGame>);
+}
+
 /// Describes an entity that watches/reacts/interjects game actions as they are queued/executed
 ///
 /// This is the primary mechanism for implementing custom game state machines.
@@ -84,7 +88,7 @@ pub trait BaseObserver<TGame: GameDomain>: std::fmt::Debug {
         &mut self,
         _action: &Action<TGame>,
         _game_state: &TGame,
-        _emit_action: &mut dyn FnMut(ActionPayload<TGame>),
+        _sink: &mut dyn ActionSink<TGame>,
     ) {
     }
 

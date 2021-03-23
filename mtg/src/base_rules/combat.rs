@@ -1,7 +1,7 @@
 use core::{
     actions::{Action, ActionPayload, EngineAction, InputRequest},
     ids::ObserverId,
-    BaseObserver, PlayerInput,
+    ActionSink, BaseObserver, PlayerInput,
 };
 
 use crate::{
@@ -50,7 +50,7 @@ impl BaseObserver<Mtg> for CombatManager {
         &mut self,
         action: &Action<Mtg>,
         game_state: &Mtg,
-        emit_action: &mut dyn FnMut(ActionPayload<Mtg>),
+        sink: &mut dyn ActionSink<Mtg>,
     ) {
         match &action.payload {
             ActionPayload::DomainAction(da) => {
@@ -60,15 +60,15 @@ impl BaseObserver<Mtg> for CombatManager {
                             // This is the beginning of the declare attackers step
                             self.current_input_request =
                                 Some(ExpectedInput::NextAttackerOrFinished);
-                            emit_action(ActionPayload::EngineAction(EngineAction::RequestInput(
-                                InputRequest {
+                            sink.emit_single(ActionPayload::EngineAction(
+                                EngineAction::RequestInput(InputRequest {
                                     from_player: game_state.step.active_player,
                                     input_type: format!(
                                         "{} to declare attackers",
                                         game_state.step.active_player
                                     ),
-                                },
-                            )))
+                                }),
+                            ))
                         }
                     }
                 }
