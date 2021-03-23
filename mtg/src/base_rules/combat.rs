@@ -12,6 +12,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 enum ExpectedInput {
     /// Expect the player to nominate the next object to be an attacker, or that they have finished
     /// declaring attackers
@@ -79,7 +80,7 @@ impl BaseObserver<Mtg> for CombatManager {
     fn consume_input(
         &mut self,
         input: &PlayerInput<Mtg>,
-        game_state: &Mtg,
+        _game_state: &Mtg,
         emit_action: &mut dyn FnMut(core::actions::ActionPayload<Mtg>),
     ) {
         let expected = self

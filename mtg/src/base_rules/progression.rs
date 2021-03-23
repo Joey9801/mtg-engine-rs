@@ -19,6 +19,7 @@ use crate::{
 };
 
 /// Does the given step normally involve a round of priority
+#[allow(dead_code)]
 fn step_has_priority(step: &Step) -> bool {
     match step {
         Step::Beginning(BeginningStep::Untap) => false,

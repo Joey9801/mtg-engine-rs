@@ -5,3 +5,6 @@ members = [
     "demo",
     "dev-tui"
 ]
+
+[profile.release]
+debug = true

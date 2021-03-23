@@ -8,6 +8,3 @@ edition = "2018"
 
 [dependencies]
 core = { path = "../core" }
-
-[profile.release]
-debug = true

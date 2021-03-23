@@ -4,11 +4,10 @@ use core::{
     PlayerInput, PlayerInputPayload,
 };
 use cursive::{
-    align::HAlign,
     event::Key,
     traits::{Boxable, Finder, Nameable, Scrollable},
     views::{
-        Dialog, EditView, LinearLayout, PaddedView, Panel, SelectView, TextArea, TextView, ViewRef,
+        Dialog, EditView, LinearLayout, Panel, SelectView, TextView, ViewRef,
     },
     Cursive,
 };
@@ -166,7 +165,7 @@ fn update_game_view(siv: &mut Cursive) {
             if v.len() > 0 {
                 v.set_selection(v.len() - 1);
                 v.get_item(v.len() - 1)
-                    .map(|(label, action)| action.clone())
+                    .map(|(_label, action)| action.clone())
             } else {
                 None
             }
