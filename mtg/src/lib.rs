@@ -5,6 +5,7 @@ pub mod steps;
 pub mod zone;
 pub mod game;
 pub mod mana;
+pub mod card;
 
 use action::MtgAction;
 pub use core::ids::{ActionId, IdGenerator, ObserverId, PlayerId};

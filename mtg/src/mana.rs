@@ -51,6 +51,7 @@ impl BaseManaCostComponent {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum ManaCostComponent {
     /// A regular mana cost component
     Base(BaseManaCostComponent),
@@ -72,6 +73,7 @@ impl ManaCostComponent {
     }
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct ManaCost {
     pub components: Vec<ManaCostComponent>,
 }
