@@ -1,19 +1,16 @@
-pub mod base_rules;
 pub mod action;
+pub mod base_rules;
+pub mod card;
+pub mod game;
+pub mod mana;
 pub mod player_inputs;
 pub mod steps;
 pub mod zone;
-pub mod game;
-pub mod mana;
-pub mod card;
 
 use action::MtgAction;
 pub use core::ids::{ActionId, IdGenerator, ObserverId, PlayerId};
-use core::{
-    ids::{ObjectId, ZoneId},
-};
+use core::ids::{ObjectId, ZoneId};
 use zone::ZoneLocation;
-
 
 #[derive(Clone, Debug)]
 pub struct SharedZones {

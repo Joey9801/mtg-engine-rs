@@ -145,9 +145,12 @@ impl<TGame: GameDomain> ActionQueue<TGame> {
                 return ActionQueueStatus::AmbiguousReplacements;
             }
         }
-        
+
         if self.resolved.len() > 1 {
-            println!("WARN: Not correctly sorting {} actions", self.resolved.len());
+            println!(
+                "WARN: Not correctly sorting {} actions",
+                self.resolved.len()
+            );
         }
 
         // TODO: Any sort of attempt to sort the resolved action set, rather than just smashing
@@ -291,7 +294,7 @@ impl<TGame: GameDomain> Game<TGame> {
             }
             ActionPayload::EngineAction(EngineAction::EndInput) => {
                 self.current_input_session = None;
-            },
+            }
             ActionPayload::EngineAction(EngineAction::PickNextAction(_)) => todo!(),
             ActionPayload::EngineAction(EngineAction::PickReplacement(_)) => todo!(),
             ActionPayload::DomainAction(da) => da.apply(&mut self.game_state),
@@ -418,7 +421,7 @@ impl<TGame: GameDomain> Game<TGame> {
     pub fn tick_until_player_input(&mut self) {
         while let TickResult::Ticked(_) = self.tick() {}
     }
-    
+
     pub fn expecting_input_from(&self) -> Option<PlayerId> {
         self.current_input_session
             .as_ref()

@@ -3,9 +3,9 @@ use std::any::Any;
 use core::{game::GameDomainAction, ids::PlayerId};
 
 use crate::{
+    game::Mtg,
     steps::{GameStep, Step, SubStep},
     zone::ZoneLocation,
-    game::Mtg,
     ObjectReference,
 };
 

@@ -105,13 +105,10 @@ impl Zone {
 
         Some(obj)
     }
-    
+
     pub fn top(&self) -> Option<&Object> {
         if let Some(ordering) = &self.ordering {
-            ordering
-                .last()
-                .map(|id| self.storage.get(id))
-                .flatten()
+            ordering.last().map(|id| self.storage.get(id)).flatten()
         } else {
             None
         }

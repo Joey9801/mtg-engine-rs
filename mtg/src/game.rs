@@ -8,7 +8,7 @@ use core::{
 use crate::{
     action::MtgAction,
     player_inputs::MtgInput,
-    steps::{Step, StartingStep, SubStep, GameStep},
+    steps::{GameStep, StartingStep, Step, SubStep},
     zone::{NamedZone, Zone},
     Player, SharedZones,
 };
@@ -195,7 +195,12 @@ impl MtgGameBuilder {
         self
     }
 
-    pub fn with_initial_step<S: AsRef<str>>(mut self, player_name: S, step: Step, substep: SubStep) -> Self {
+    pub fn with_initial_step<S: AsRef<str>>(
+        mut self,
+        player_name: S,
+        step: Step,
+        substep: SubStep,
+    ) -> Self {
         let pid = self
             .players
             .iter()
@@ -203,7 +208,7 @@ impl MtgGameBuilder {
             .map(|(pid, _player)| pid)
             .cloned()
             .expect("Couldn't find player with name");
-        
+
         self.step = Some(GameStep {
             active_player: pid,
             step,
@@ -212,7 +217,7 @@ impl MtgGameBuilder {
 
         self
     }
-    
+
     pub fn with_intial_priority<S: AsRef<str>>(mut self, name: S) -> Self {
         let pid = self
             .players
@@ -266,7 +271,7 @@ impl MtgGameBuilder {
             game_timestamp: GameTimestamp::zero(),
             current_input_session: None,
         };
-        
+
         crate::base_rules::attach(&mut game);
 
         game

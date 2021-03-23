@@ -53,14 +53,14 @@ fn main() {
     }
 
     let sw = Instant::now();
-    
+
     // Game starts in Alice's first main phase with Alice just about to receive priority
     game.tick_until_player_input();
     pass_priority(&mut game, alice);
     game.tick_until_player_input();
     pass_priority(&mut game, bob);
     game.tick_until_player_input();
-    
+
     // After Alice and Bob both pass on an empty stack, the game should move to the StartOfCombat
     // step, and both Alice and Bob should get another round of priority
     assert_eq!(
@@ -82,7 +82,7 @@ fn main() {
     })
     .expect("Expected to succeed in giving input");
     game.tick_until_player_input();
-    
+
     // After declaring attackers, there is round of priority starting with the active player, Alice
     pass_priority(&mut game, alice);
     game.tick_until_player_input();

@@ -62,10 +62,10 @@ fn next_step(game_state: &Mtg) -> GameStep {
 
     let next_active_player = if game_state.step.step == End(Cleanup) {
         game_state
-                .turn_order
-                .get(&game_state.step.active_player)
-                .cloned()
-                .expect("Don't know which player comes after the active player")
+            .turn_order
+            .get(&game_state.step.active_player)
+            .cloned()
+            .expect("Don't know which player comes after the active player")
     } else {
         game_state.step.active_player
     };
@@ -123,9 +123,10 @@ impl StepsAndPriority {
     ) {
         match input {
             PriorityInput::PassPriority => {
-                self.post_input_actions.push(ActionPayload::DomainAction(
-                    Box::new(PassPriority { player: source }) as Box<dyn MtgAction>
-                ));
+                self.post_input_actions
+                    .push(ActionPayload::DomainAction(
+                        Box::new(PassPriority { player: source }) as Box<dyn MtgAction>,
+                    ));
                 emit_action(ActionPayload::EngineAction(EngineAction::EndInput));
             }
             PriorityInput::CastSpell => todo!(),
@@ -161,7 +162,9 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                 if let Some(priority_player) = game_state.priority {
                     let input_req = InputRequest {
                         from_player: priority_player,
-                        input_type: format!("Requesting priority input. Expecting MtgInput::PriorityInput(_)"),
+                        input_type: format!(
+                            "Requesting priority input. Expecting MtgInput::PriorityInput(_)"
+                        ),
                     };
                     emit_action(ActionPayload::EngineAction(EngineAction::RequestInput(
                         input_req.clone(),
@@ -242,7 +245,6 @@ impl BaseObserver<Mtg> for StepsAndPriority {
                         .expect("Don't know which player comes next in the turn order");
                     self.next_priority = Some(next_priority);
                 }
-
             }
             ActionPayload::DomainAction(da) if da.is::<AdvanceStep>() => {
                 let advance_step_action = da.as_t::<AdvanceStep>().unwrap();

@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn test_has_type() {
         let universe = make_card_universe();
-        
+
         let forest = universe
             .find_by_name("Forest")
             .expect("Expect Forest to be in the card universe");
@@ -708,7 +708,7 @@ mod tests {
         assert!(forest.type_line.has_type(LandType::Forest));
         assert!(!forest.type_line.has_type(CardType::Creature));
         assert!(!forest.type_line.has_type(CreatureType::Wizard));
-        
+
         assert!(forest.has_type(SuperType::Basic));
         assert!(forest.has_type(CardType::Land));
         assert!(forest.has_type(LandType::Forest));

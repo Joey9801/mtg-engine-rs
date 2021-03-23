@@ -12,7 +12,12 @@ use cursive::{
     },
     Cursive,
 };
-use mtg::{action::{AdvanceStep, MtgAction, MtgActionDowncast, PassPriority, SetPriority}, game::{Mtg, MtgGameBuilder}, player_inputs::{MtgInput, PriorityInput}, steps::{Step, SubStep}};
+use mtg::{
+    action::{AdvanceStep, MtgAction, MtgActionDowncast, PassPriority, SetPriority},
+    game::{Mtg, MtgGameBuilder},
+    player_inputs::{MtgInput, PriorityInput},
+    steps::{Step, SubStep},
+};
 use std::ops::DerefMut;
 
 fn build_new_game() -> Game<Mtg> {
@@ -50,8 +55,11 @@ fn render_domain_action(action: &Box<dyn MtgAction>) -> String {
     } else if let Some(a) = action.as_t::<SetPriority>() {
         format!("Setting priority to {}", a.new_priority)
     } else if let Some(a) = action.as_t::<AdvanceStep>() {
-        format!("Advance step to {}/{:?}/{:?}", a.new_active_player, a.new_step, a.new_substep)
-    } else{
+        format!(
+            "Advance step to {}/{:?}/{:?}",
+            a.new_active_player, a.new_step, a.new_substep
+        )
+    } else {
         format!("Missing custom renderer: {:?}", action)
     }
 }
@@ -126,8 +134,7 @@ fn create_game_view(siv: &mut Cursive) {
                             TextView::new("").with_name("action-history-focus"),
                         )),
                 )
-                .title("Action history")
-                // .fixed_width(60),
+                .title("Action history"), // .fixed_width(60),
             )
             .full_height(),
     ));
@@ -174,7 +181,10 @@ fn update_game_view(siv: &mut Cursive) {
     }
 
     view.call_on_name("current-step", |v: &mut TextView| {
-        v.set_content(format!("Step = {:#?}\nPriority = {:?}", game.game_state.step, game.game_state.priority))
+        v.set_content(format!(
+            "Step = {:#?}\nPriority = {:?}",
+            game.game_state.step, game.game_state.priority
+        ))
     });
 
     view.call_on_name("action-queue", |v: &mut TextView| {

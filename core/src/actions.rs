@@ -46,7 +46,7 @@ pub enum ActionPayload<TGame: GameDomain> {
 
     /// An action that represents an atomic modification to the domain state
     DomainAction(TGame::Action),
-    
+
     Composite(Vec<Action<TGame>>),
 }
 
