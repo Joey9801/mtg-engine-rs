@@ -1,0 +1,24 @@
+[package]
+name = "dev-tui"
+version = "0.1.0"
+authors = ["Joe Roberts <josephroberts11@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+core = { path = "../core" }
+mtg = { path = "../mtg" }
+
+
+[dependencies.cursive]
+version = "0.16"
+default-features = false
+
+[features]
+default-backend = ["ncurses-backend"]
+ncurses-backend = ["cursive/ncurses-backend"]
+pancurses-backend = ["cursive/pancurses-backend"]
+termion-backend = ["cursive/termion-backend"]
+crossterm-backend = ["cursive/crossterm-backend"]
+blt-backend = ["cursive/blt-backend"]

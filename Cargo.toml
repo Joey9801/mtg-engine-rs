@@ -3,4 +3,5 @@ members = [
     "core",
     "mtg",
     "demo",
+    "dev-tui"
 ]
